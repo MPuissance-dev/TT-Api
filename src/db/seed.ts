@@ -2,17 +2,17 @@
 // @ts-nocheck
 /* eslint-enable @typescript-eslint/ban-ts-comment */
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { clubs } from './schema/clubs.js'
-import { divisions } from './schema/divisions.js'
-import { teams } from './schema/teams.js'
-import { players } from './schema/players.js'
-import { pools } from './schema/pools.js'
-import { pool_team } from './schema/pool_team.js'
-import { encounters } from './schema/encounter.js'
-import { encounter_lineup } from './schema/encounter_lineup.js'
-import { single_matchs } from './schema/single_matchs.js'
-import { double_matchs } from './schema/double_matchs.js'
-import { team_ranking } from './schema/team_ranking.js'
+import { clubs } from './schemas/clubs.js'
+import { divisions } from './schemas/divisions.js'
+import { teams } from './schemas/teams.js'
+import { players } from './schemas/players.js'
+import { pools } from './schemas/pools.js'
+import { pool_team } from './schemas/pool_team.js'
+import { encounters } from './schemas/encounter.js'
+import { encounter_lineup } from './schemas/encounter_lineup.js'
+import { single_matchs } from './schemas/single_matchs.js'
+import { double_matchs } from './schemas/double_matchs.js'
+import { team_ranking } from './schemas/team_ranking.js'
 
 async function insert(db: NodePgDatabase, table: unknown, values: unknown[]) {
   const rows = await db.insert(table).values(values).returning()
