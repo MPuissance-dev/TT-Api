@@ -1,16 +1,40 @@
 import Fastify from 'fastify'
+import env from '@fastify/env'
+
+const schema = {
+  type: 'object',
+  required: ['PORT', 'DATABASE_URL'],
+  properties: {
+    PORT: {
+      type: 'string',
+      default: 3000,
+    },
+    DATABASE_URL: {
+      type: 'string',
+    },
+  },
+}
+
+const options = {
+  schema: schema,
+  dotenv: true,
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    config: {
+      PORT: string
+      DATABASE_URL: string
+    }
+  }
+}
 
 const fastify = Fastify({
   logger: true,
 })
 
-const start = async () => {
-  try {
-    await fastify.listen({ port: 3000 })
-  } catch (err) {
-    fastify.log.error(err)
-    process.exit(1)
-  }
-}
+export const createServer = async () => {
+  await fastify.register(env, options).after()
 
-start()
+  return fastify
+}

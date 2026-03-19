@@ -1,0 +1,2 @@
+ALTER TABLE "clubs" ALTER COLUMN "name" SET DATA TYPE varchar(10);
+ALTER TABLE "clubs" ALTER COLUMN "numero" SET DATA TYPE varchar(10);

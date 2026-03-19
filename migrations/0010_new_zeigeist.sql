@@ -1,0 +1,1 @@
+ALTER TABLE "players" ALTER COLUMN "rank" SET DATA TYPE varchar(15);
