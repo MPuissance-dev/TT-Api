@@ -10,3 +10,5 @@ export const pools = pgTable('pools', {
   name: varchar('name', { length: 15 }).notNull(),
   ...timestamps,
 })
+
+export type Pool = typeof pools.$inferSelect

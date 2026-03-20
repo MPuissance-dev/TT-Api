@@ -5,6 +5,7 @@
   "main": "app.ts",
   "scripts": {
     "start": "tsx src/app.ts",
+    "db:seed": "tsx src/db/seed-run.ts",
     "openapi:generate-type": "npx openapi-typescript ./contracts/TT-api-contract.openapi.yaml -o ./src/types/api.d.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

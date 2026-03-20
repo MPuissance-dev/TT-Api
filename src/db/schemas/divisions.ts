@@ -7,3 +7,5 @@ export const divisions = pgTable('divisions', {
   level: integer('level').notNull(),
   ...timestamps,
 })
+
+export type Division = typeof divisions.$inferSelect

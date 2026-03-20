@@ -12,3 +12,5 @@ export const players = pgTable('players', {
     .notNull(),
   ...timestamps,
 })
+
+export type Player = typeof players.$inferSelect

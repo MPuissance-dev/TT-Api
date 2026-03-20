@@ -20,3 +20,5 @@ export const encounter_lineup = pgTable(
   },
   (table) => [primaryKey({ columns: [table.encounter_id, table.player_id] })]
 )
+
+export type EncounterLineup = typeof encounter_lineup.$inferSelect

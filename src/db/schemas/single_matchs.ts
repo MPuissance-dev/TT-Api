@@ -19,3 +19,5 @@ export const single_matchs = pgTable('single_matchs', {
     .notNull(),
   ...timestamps,
 })
+
+export type SingleMatch = typeof single_matchs.$inferSelect

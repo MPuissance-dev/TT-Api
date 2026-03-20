@@ -7,3 +7,5 @@ export const clubs = pgTable('clubs', {
   numero: varchar('numero', { length: 15 }).notNull(),
   ...timestamps,
 })
+
+export type Club = typeof clubs.$inferSelect

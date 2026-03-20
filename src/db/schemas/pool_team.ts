@@ -16,3 +16,5 @@ export const pool_team = pgTable(
   },
   (table) => [primaryKey({ columns: [table.pool_id, table.team_id] })]
 )
+
+export type PoolTeam = typeof pool_team.$inferSelect

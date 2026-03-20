@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
 import env from '@fastify/env'
+import { encountersRouter } from './modules/encounters/router.js'
 
 const schema = {
   type: 'object',
@@ -34,7 +35,10 @@ const fastify = Fastify({
 })
 
 export const createServer = async () => {
+
   await fastify.register(env, options).after()
+
+  fastify.register(encountersRouter, { prefix: '/api/encounters'})
 
   return fastify
 }

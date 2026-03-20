@@ -23,3 +23,5 @@ export const team_ranking = pgTable(
   },
   (table) => [unique().on(table.pool_id, table.team_id)]
 )
+
+export type TeamRanking = typeof team_ranking.$inferSelect

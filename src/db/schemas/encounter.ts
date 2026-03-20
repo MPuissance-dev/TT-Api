@@ -24,6 +24,8 @@ export const encounters = pgTable('encounters', {
   championship_day_number: integer('championship_day_number').notNull(),
   home_score: integer('home_score').default(0),
   away_score: integer('away_score').default(0),
-  status: encounterStatus().default('played'),
+  status: encounterStatus().default('played').notNull(),
   ...timestamps,
 })
+
+export type Encounter = typeof encounters.$inferSelect

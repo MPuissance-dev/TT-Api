@@ -28,3 +28,5 @@ export const double_matchs = pgTable('double_matchs', {
     .notNull(),
   ...timestamps,
 })
+
+export type DoubleMatch = typeof double_matchs.$inferSelect

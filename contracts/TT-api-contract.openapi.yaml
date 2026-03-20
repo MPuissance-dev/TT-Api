@@ -50,6 +50,7 @@ components:
         id:
           description: Identifiant de la rencontre
           type: string
+          format: uuid
         division:
           description: Division de la rencontre
           type: string
@@ -68,7 +69,7 @@ components:
         homeScore:
           description: Score de l'équipe à domicile
           type: number
-          nullabe: true
+          nullable: true
         awayScore:
           description: Score de l'équipe à l'extérieur
           type: number
@@ -88,6 +89,7 @@ components:
         id:
           description: Identifiant de l'équipe
           type: string
+          format: uuid
         clubName:
           description: Nom du club
           type: string
@@ -105,6 +107,7 @@ components:
         id:
           description: Identifiant du joueur
           type: string
+          format: uuid
         fullName:
           description: Nom du joueur
           type: string

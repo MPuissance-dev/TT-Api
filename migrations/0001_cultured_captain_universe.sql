@@ -1,0 +1,1 @@
+ALTER TABLE "encounters" ALTER COLUMN "status" SET NOT NULL;

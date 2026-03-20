@@ -30,7 +30,10 @@ export interface components {
             dayNumber?: number;
         };
         Encounter: {
-            /** @description Identifiant de la rencontre */
+            /**
+             * Format: uuid
+             * @description Identifiant de la rencontre
+             */
             id?: string;
             /** @description Division de la rencontre */
             division?: string;
@@ -45,7 +48,7 @@ export interface components {
             played_at?: string;
             status?: components["schemas"]["EncounterStatus"];
             /** @description Score de l'équipe à domicile */
-            homeScore?: number;
+            homeScore?: number | null;
             /** @description Score de l'équipe à l'extérieur */
             awayScore?: number | null;
             /** @description Equipe à domicile */
@@ -54,7 +57,10 @@ export interface components {
             awayTeam?: components["schemas"]["Team"];
         };
         Team: {
-            /** @description Identifiant de l'équipe */
+            /**
+             * Format: uuid
+             * @description Identifiant de l'équipe
+             */
             id?: string;
             /** @description Nom du club */
             clubName?: string;
@@ -63,7 +69,10 @@ export interface components {
             lineup?: components["schemas"]["Player"][];
         };
         Player: {
-            /** @description Identifiant du joueur */
+            /**
+             * Format: uuid
+             * @description Identifiant du joueur
+             */
             id?: string;
             /** @description Nom du joueur */
             fullName?: string;
@@ -96,6 +105,9 @@ export interface operations {
         responses: {
             /** @description Résultats trouvés */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content: {
                     "application/json": components["schemas"]["Encounter"][];
                 };
