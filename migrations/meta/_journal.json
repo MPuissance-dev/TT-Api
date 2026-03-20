@@ -5,78 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1773915106689,
-      "tag": "0000_dry_zaladane",
-      "breakpoints": false
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1773918988396,
-      "tag": "0001_charming_elektra",
-      "breakpoints": false
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1773920712848,
-      "tag": "0002_big_abomination",
-      "breakpoints": false
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1773937005393,
-      "tag": "0003_naive_blink",
-      "breakpoints": false
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1773937204025,
-      "tag": "0004_fixed_dark_phoenix",
-      "breakpoints": false
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1773937609710,
-      "tag": "0005_fluffy_tomorrow_man",
-      "breakpoints": false
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1773938174538,
-      "tag": "0006_messy_skrulls",
-      "breakpoints": false
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1773938224366,
-      "tag": "0007_burly_impossible_man",
-      "breakpoints": false
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1773938267411,
-      "tag": "0008_clumsy_young_avengers",
-      "breakpoints": false
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1773938314381,
-      "tag": "0009_abandoned_kylun",
-      "breakpoints": false
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1773938393149,
-      "tag": "0010_new_zeigeist",
+      "when": 1774004293265,
+      "tag": "0000_puzzling_ultron",
       "breakpoints": false
     }
   ]

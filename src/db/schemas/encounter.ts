@@ -21,6 +21,7 @@ export const encounters = pgTable('encounters', {
     .references(() => teams.id)
     .notNull(),
   played_at: timestamp('played_at').notNull(),
+  championship_day_number: integer('championship_day_number').notNull(),
   home_score: integer('home_score').default(0),
   away_score: integer('away_score').default(0),
   status: encounterStatus().default('played'),

@@ -55,25 +55,25 @@ export async function seedDatabase(db: NodePgDatabase) {
       {
         firstName: 'Alice',
         lastName: 'Dupont',
-        rank: '500',
+        points: '500',
         clubId: clubParis.id,
       },
       {
         firstName: 'Bob',
         lastName: 'Martin',
-        rank: '750',
+        points: '750',
         clubId: clubParis.id,
       },
       {
         firstName: 'Clara',
         lastName: 'Durand',
-        rank: '600',
+        points: '600',
         clubId: clubLyon.id,
       },
       {
         firstName: 'David',
         lastName: 'Petit',
-        rank: '800',
+        points: '800',
         clubId: clubLyon.id,
       },
     ]
@@ -146,6 +146,7 @@ export async function seedDatabase(db: NodePgDatabase) {
       played_at: new Date('2026-01-10'),
       home_score: 3,
       away_score: 1,
+      championship_day_number: 1,
       status: 'played',
     },
     {
@@ -155,6 +156,7 @@ export async function seedDatabase(db: NodePgDatabase) {
       played_at: new Date('2026-01-17'),
       home_score: 2,
       away_score: 2,
+      championship_day_number: 1,
       status: 'played',
     },
   ])

@@ -1,0 +1,120 @@
+openapi: 3.1.0
+
+info:
+  title: TT-API
+  version: 1.0.0
+  description: Définition de l'api de la Mellinet TT
+
+tags: 
+  - name: Players
+    description: informations sur les joueurs
+  - name: Encounters
+    description: informations sur le championnat
+
+paths:
+  /encounters-search:
+    post:
+      tags:
+        - Encounters
+      summary: Recherche le détails des rencontres de championnat spécifiées
+      operationId: searchEncounters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncounterSearchRequest'
+      responses:
+        '200':
+          description: Résultats trouvés
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Encounter'           
+
+components:
+  schemas:
+    EncounterSearchRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        dayNumber:
+          description: Journée de championnat
+          type: number
+
+    Encounter:
+      type: object
+      properties:
+        id:
+          description: Identifiant de la rencontre
+          type: string
+        division:
+          description: Division de la rencontre
+          type: string
+        pool:
+          description: Poule de la rencontre
+          type: string
+        championshipDayNumber:
+          description: Journée de championnat
+          type: number
+        played_at:
+          description: Date de la rencontre
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/EncounterStatus'
+        homeScore:
+          description: Score de l'équipe à domicile
+          type: number
+          nullabe: true
+        awayScore:
+          description: Score de l'équipe à l'extérieur
+          type: number
+          nullable: true
+        homeTeam:
+          description: Equipe à domicile
+          $ref: '#/components/schemas/Team'
+          nullabe: true
+        awayTeam:
+          description: Equipe à l'extérieur
+          $ref: '#/components/schemas/Team'
+          nullabe: true
+        
+    Team: 
+      type: object
+      properties:
+        id:
+          description: Identifiant de l'équipe
+          type: string
+        clubName:
+          description: Nom du club
+          type: string
+        isMellinet:
+          description: Est une équipe Mellinet ?
+          type: boolean
+        lineup:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+          
+    Player:
+      type: object
+      properties:
+        id:
+          description: Identifiant du joueur
+          type: string
+        fullName:
+          description: Nom du joueur
+          type: string
+        points:
+          description: Nombre de points du joueur
+          type: number
+          
+    EncounterStatus:
+      type: string
+      enum:
+        - SCHEDULED
+        - PLAYED
+        - REPORTED

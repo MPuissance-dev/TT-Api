@@ -5,7 +5,7 @@
   "main": "app.ts",
   "scripts": {
     "start": "tsx src/app.ts",
-    "debug": "tsx --inspect src/app.ts",
+    "openapi:generate-type": "npx openapi-typescript ./contracts/TT-api-contract.openapi.yaml -o ./src/types/api.d.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "prettier": "npx prettier --write src/"
@@ -29,6 +29,7 @@
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.4.0",
+    "openapi-typescript": "^7.13.0",
     "prettier": "3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
