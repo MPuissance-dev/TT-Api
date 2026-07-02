@@ -9,6 +9,14 @@
     "openapi:generate-type": "npx openapi-typescript ./contracts/TT-api-contract.openapi.yaml -o ./src/types/api.d.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:local:up": "bash ./scripts/postgres-local.sh up",
+    "db:local:down": "bash ./scripts/postgres-local.sh down",
+    "db:local:status": "bash ./scripts/postgres-local.sh status",
+    "db:local:logs": "bash ./scripts/postgres-local.sh logs",
+    "db:local:url": "bash ./scripts/postgres-local.sh url",
+    "db:local:reset": "bash ./scripts/postgres-local.sh reset",
+    "db:local:destroy": "bash ./scripts/postgres-local.sh destroy",
+    "db:local:setup": "bash ./scripts/postgres-local.sh up && DATABASE_URL=$(bash ./scripts/postgres-local.sh url --raw) npm run db:migrate && DATABASE_URL=$(bash ./scripts/postgres-local.sh url --raw) npm run db:seed",
     "prettier": "npx prettier --write src/"
   },
   "type": "module",
@@ -16,24 +24,25 @@
   "license": "ISC",
   "dependencies": {
     "@fastify/cors": "^11.2.0",
-    "@fastify/env": "^5.0.3",
-    "drizzle-orm": "^0.45.1",
+    "@fastify/env": "^7.0.0",
+    "dotenv": "^17.2.1",
+    "drizzle-orm": "^0.45.2",
     "drizzle-seed": "^0.3.1",
-    "fastify": "^5.8.2",
-    "pg": "^8.20.0"
+    "fastify": "^5.9.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^25.5.0",
-    "@types/pg": "^8.18.0",
+    "@types/node": "^26.1.0",
+    "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10.0.3",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.4.0",
+    "globals": "^17.7.0",
     "openapi-typescript": "^7.13.0",
-    "prettier": "3.8.1",
-    "tsx": "^4.21.0",
+    "prettier": "3.9.4",
+    "tsx": "^4.22.5",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1"
+    "typescript-eslint": "^8.62.1"
   }
 }

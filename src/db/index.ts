@@ -11,6 +11,7 @@ const pool = new Pool({
 })
 
 export const db = drizzle({ client: pool, schema: { ...schema, ...relations } })
+export type Database = typeof db
 
 export async function init_db() {
   await pool.connect()

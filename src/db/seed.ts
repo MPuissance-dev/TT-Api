@@ -1,20 +1,20 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 /* eslint-enable @typescript-eslint/ban-ts-comment */
-import { NodePgDatabase } from 'drizzle-orm/node-postgres'
+import type { Database } from './index.js'
 import { clubs } from './schemas/clubs.js'
-import { divisions } from './schemas/divisions.js'
+import { divisions } from './schemas/index.js'
 import { teams } from './schemas/teams.js'
 import { players } from './schemas/players.js'
 import { pools } from './schemas/pools.js'
-import { pool_team } from './schemas/pool_team.js'
-import { encounters } from './schemas/encounter.js'
-import { encounter_lineup } from './schemas/encounter_lineup.js'
-import { single_matchs } from './schemas/single_matchs.js'
-import { double_matchs } from './schemas/double_matchs.js'
-import { team_ranking } from './schemas/team_ranking.js'
+import { pool_team } from './schemas/index.js'
+import { encounters } from './schemas/index.js'
+import { encounter_lineup } from './schemas/index.js'
+import { single_matchs } from './schemas/index.js'
+import { double_matchs } from './schemas/index.js'
+import { team_ranking } from './schemas/index.js'
 
-async function insert(db: NodePgDatabase, table: unknown, values: unknown[]) {
+async function insert(db: Database, table: unknown, values: unknown[]) {
   const rows = await db.insert(table).values(values).returning()
   if (rows.length !== values.length) {
     throw new Error(`Expected ${values.length} rows, got ${rows.length}`)
@@ -22,7 +22,7 @@ async function insert(db: NodePgDatabase, table: unknown, values: unknown[]) {
   return rows
 }
 
-export async function seedDatabase(db: NodePgDatabase) {
+export async function seedDatabase(db: Database) {
   // 1. Clubs
   const [clubParis, clubLyon] = await insert(db, clubs, [
     { name: 'TT Paris', numero: 'P001' },
