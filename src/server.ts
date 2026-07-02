@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import env from '@fastify/env'
-import { encountersRouter } from './modules/encounters/router.js'
+import { createEncountersRouter } from './modules/encounters/router.js'
+import { services as defaultServices, type AppServices } from './services.js'
 
 const schema = {
   type: 'object',
@@ -16,11 +17,6 @@ const schema = {
   },
 }
 
-const options = {
-  schema: schema,
-  dotenv: true,
-}
-
 declare module 'fastify' {
   interface FastifyInstance {
     config: {
@@ -30,15 +26,43 @@ declare module 'fastify' {
   }
 }
 
-const fastify = Fastify({
-  logger: true,
-})
+interface ServerConfig {
+  [key: string]: string
+  PORT: string
+  DATABASE_URL: string
+}
 
-export const createServer = async () => {
+interface CreateServerOptions {
+  logger?: boolean
+  config?: ServerConfig
+  services?: AppServices
+}
+export const createServer = async ({
+  logger = true,
+  config,
+  services: appServices = defaultServices,
+}: CreateServerOptions = {}) => {
+  const fastify = Fastify({
+    logger,
+  })
 
-  await fastify.register(env, options).after()
+  if (config === undefined) {
+    await fastify
+      .register(env, {
+        schema,
+        dotenv: true,
+      })
+      .after()
+  } else {
+    await fastify
+      .register(env, {
+        schema,
+        data: { ...config },
+      })
+      .after()
+  }
 
-  fastify.register(encountersRouter, { prefix: '/api/encounters'})
+  await fastify.register(createEncountersRouter(appServices), { prefix: '/api/encounters' })
 
   return fastify
 }
