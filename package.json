@@ -5,6 +5,8 @@
   "main": "app.ts",
   "scripts": {
     "start": "tsx src/app.ts",
+    "test": "tsx --test src/**/*.test.ts",
+    "test:http:db": "npm run db:local:setup && DATABASE_URL=$(bash ./scripts/postgres-local.sh url --raw) npm test",
     "db:seed": "tsx src/db/seed-run.ts",
     "openapi:generate-type": "npx openapi-typescript ./contracts/TT-api-contract.openapi.yaml -o ./src/types/api.d.ts",
     "db:generate": "drizzle-kit generate",

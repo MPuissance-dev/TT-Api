@@ -10,13 +10,8 @@ type SearchEncountersRequest = FastifyRequest<{
 export const createSearchEncountersHandler = (appServices: AppServices = services) => {
   return async (request: SearchEncountersRequest, reply: FastifyReply) => {
     const { dayNumber } = request.body
-    try {
-      const rows = await appServices.encounters.searchEncounters(dayNumber)
-      const encounters = rows.map((row) => mapEncounter(row))
-      reply.send(encounters)
-    } catch (error) {
-      console.error('Error fetching encounters:', error)
-      reply.status(500).send({ error: 'Failed to fetch encounters' })
-    }
+    const rows = await appServices.encounters.searchEncounters(dayNumber)
+    const encounters = rows.map((row) => mapEncounter(row))
+    reply.send(encounters)
   }
 }

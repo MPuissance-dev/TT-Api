@@ -43,7 +43,11 @@ export const createServer = async ({
   services: appServices = defaultServices,
 }: CreateServerOptions = {}) => {
   const fastify = Fastify({
-    logger,
+    logger: logger
+      ? {
+          level: 'info',
+        }
+      : false,
   })
 
   if (config === undefined) {
@@ -61,6 +65,19 @@ export const createServer = async ({
       })
       .after()
   }
+
+  fastify.setErrorHandler((error, request, reply) => {
+    request.log.error(
+      {
+        err: error,
+        method: request.method,
+        url: request.url,
+      },
+      'request failed'
+    )
+
+    reply.status(500).send({ error: 'Internal server error' })
+  })
 
   await fastify.register(createEncountersRouter(appServices), { prefix: '/api/encounters' })
 
