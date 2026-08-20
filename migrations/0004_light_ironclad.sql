@@ -1,0 +1,1 @@
+ALTER TABLE "clubs" ALTER COLUMN "name" SET DATA TYPE varchar(50);

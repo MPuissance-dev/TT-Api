@@ -1,0 +1,12 @@
+ALTER TABLE "clubs" ADD COLUMN "fftt_id" varchar(32);
+ALTER TABLE "divisions" ADD COLUMN "fftt_id" varchar(32);
+ALTER TABLE "encounters" ADD COLUMN "fftt_id" varchar(64);
+ALTER TABLE "players" ADD COLUMN "fftt_id" varchar(32);
+ALTER TABLE "pools" ADD COLUMN "fftt_id" varchar(32);
+ALTER TABLE "teams" ADD COLUMN "fftt_id" varchar(32);
+ALTER TABLE "clubs" ADD CONSTRAINT "clubs_fftt_id_unique" UNIQUE("fftt_id");
+ALTER TABLE "divisions" ADD CONSTRAINT "divisions_fftt_id_unique" UNIQUE("fftt_id");
+ALTER TABLE "encounters" ADD CONSTRAINT "encounters_fftt_id_unique" UNIQUE("fftt_id");
+ALTER TABLE "players" ADD CONSTRAINT "players_fftt_id_unique" UNIQUE("fftt_id");
+ALTER TABLE "pools" ADD CONSTRAINT "pools_fftt_id_unique" UNIQUE("fftt_id");
+ALTER TABLE "teams" ADD CONSTRAINT "teams_fftt_id_unique" UNIQUE("fftt_id");

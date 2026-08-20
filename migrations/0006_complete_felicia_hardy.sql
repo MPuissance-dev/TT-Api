@@ -1,0 +1,1 @@
+ALTER TABLE "divisions" ALTER COLUMN "level" SET DATA TYPE varchar(50);

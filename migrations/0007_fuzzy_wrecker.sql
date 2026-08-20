@@ -1,0 +1,1 @@
+ALTER TABLE "divisions" ALTER COLUMN "fftt_id" SET DATA TYPE varchar(50);

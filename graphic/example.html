@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rencontres du week-end</title>
+  <style>
+      body {
+          margin: 0;
+          background: #0f172a;
+          font-family: Arial, sans-serif;
+          color: white;
+      }
+
+      .poster {
+          width: 1080px;
+          min-height: 1350px;
+          margin: 0 auto;
+          padding: 48px;
+          background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+          box-sizing: border-box;
+      }
+
+      .header {
+          margin-bottom: 40px;
+      }
+
+      .club {
+          font-size: 28px;
+          font-weight: bold;
+          color: #f59e0b;
+          text-transform: uppercase;
+      }
+
+      .title {
+          font-size: 64px;
+          font-weight: 900;
+          margin: 12px 0;
+      }
+
+      .subtitle {
+          font-size: 28px;
+          color: #cbd5e1;
+      }
+
+      .matches {
+          display: grid;
+          gap: 24px;
+      }
+
+      .card {
+          background: rgba(255,255,255,0.06);
+          border-radius: 24px;
+          padding: 28px;
+      }
+
+      .meta {
+          display: flex;
+          justify-content: space-between;
+          color: #cbd5e1;
+          font-size: 22px;
+          margin-bottom: 20px;
+      }
+
+      .main {
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          gap: 24px;
+          align-items: center;
+      }
+
+      .team-name {
+          font-size: 36px;
+          font-weight: 800;
+      }
+
+      .lineup {
+          margin-top: 8px;
+          font-size: 20px;
+          color: #cbd5e1;
+      }
+
+      .score {
+          font-size: 54px;
+          font-weight: 900;
+          text-align: center;
+      }
+
+      .right {
+          text-align: right;
+      }
+  </style>
+</head>
+<body>
+<div class="poster">
+  <div class="header">
+    <div class="club">Mellinet TT</div>
+    <div class="title">Rencontres du week-end</div>
+    <div class="subtitle">Journée 1 · 10 au 11 janvier 2026</div>
+  </div>
+
+  <div class="matches">
+    <div class="card">
+      <div class="meta">
+        <span>Nationale · Poule A</span>
+        <span>Samedi 10 janvier</span>
+      </div>
+      <div class="main">
+        <div>
+          <div class="team-name">TT Paris</div>
+        </div>
+        <div class="score">3 - 1</div>
+        <div class="right">
+          <div class="team-name">TT Lyon</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="meta">
+        <span>Régionale · Poule B</span>
+        <span>Dimanche 11 janvier</span>
+      </div>
+      <div class="main">
+        <div>
+          <div class="team-name">TT Paris</div>
+        </div>
+        <div class="score">2 - 2</div>
+        <div class="right">
+          <div class="team-name">TT Lyon</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -40,7 +40,7 @@ export interface components {
             /** @description Poule de la rencontre */
             pool?: string;
             /** @description Journée de championnat */
-            championshipDayNumber?: number;
+            championshipDayNumber?: number | null;
             /**
              * Format: date
              * @description Date de la rencontre

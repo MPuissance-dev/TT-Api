@@ -60,6 +60,7 @@ components:
         championshipDayNumber:
           description: Journée de championnat
           type: number
+          nullable: true
         played_at:
           description: Date de la rencontre
           type: string

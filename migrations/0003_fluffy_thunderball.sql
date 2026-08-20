@@ -1,0 +1,1 @@
+ALTER TABLE "encounters" ALTER COLUMN "championship_day_number" DROP NOT NULL;

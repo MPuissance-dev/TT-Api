@@ -57,8 +57,8 @@ export const demoSeedData = {
     { id: ids.clubs.lyon, name: 'TT Lyon', numero: 'L001' },
   ] satisfies (typeof clubs.$inferInsert)[],
   divisions: [
-    { id: ids.divisions.nationale, name: 'Nationale', level: 1 },
-    { id: ids.divisions.regionale, name: 'Régionale', level: 2 },
+    { id: ids.divisions.nationale, name: 'Nationale', level: 'Nationale' },
+    { id: ids.divisions.regionale, name: 'Régionale', level: 'Régionale' },
   ] satisfies (typeof divisions.$inferInsert)[],
   teams: [
     { id: ids.teams.paris1, clubId: ids.clubs.paris },

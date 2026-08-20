@@ -1,6 +1,9 @@
 import Fastify from 'fastify'
 import env from '@fastify/env'
 import { createEncountersRouter } from './modules/encounters/router.js'
+import { createFfttRouter } from './modules/fftt/router.js'
+import { createFfttClient } from './modules/fftt/client.js'
+import { createFfttSynchronizer } from './modules/fftt/synchronizer.js'
 import { services as defaultServices, type AppServices } from './services.js'
 
 const schema = {
@@ -14,6 +17,15 @@ const schema = {
     DATABASE_URL: {
       type: 'string',
     },
+    FFTT_APPILICATION_CODE: {
+      type: 'string',
+    },
+    FFTT_PWD: {
+      type: 'string',
+    },
+    FFTT_SERIE: {
+      type: 'string',
+    },
   },
 }
 
@@ -22,6 +34,9 @@ declare module 'fastify' {
     config: {
       PORT: string
       DATABASE_URL: string
+      FFTT_APPILICATION_CODE?: string
+      FFTT_PWD?: string
+      FFTT_SERIE?: string
     }
   }
 }
@@ -79,7 +94,21 @@ export const createServer = async ({
     reply.status(500).send({ error: 'Internal server error' })
   })
 
-  await fastify.register(createEncountersRouter(appServices), { prefix: '/api/encounters' })
+  const configuredFftt = createFfttClient({
+    applicationCode: fastify.config.FFTT_APPILICATION_CODE,
+    password: fastify.config.FFTT_PWD,
+    serie: fastify.config.FFTT_SERIE,
+  })
+  const configuredServices: AppServices = {
+    ...appServices,
+    fftt: configuredFftt,
+    ffttSynchronization: createFfttSynchronizer(configuredFftt, undefined, (message, context) =>
+      fastify.log.warn(context, message)
+    ),
+  }
+
+  await fastify.register(createEncountersRouter(configuredServices), { prefix: '/api/encounters' })
+  await fastify.register(createFfttRouter(configuredServices), { prefix: '/api/fftt' })
 
   return fastify
 }
