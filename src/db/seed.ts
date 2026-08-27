@@ -4,6 +4,7 @@
 import type { Database } from './index.js'
 import { demoSeedData } from './fixtures/demo-data.js'
 import { clubs } from './schemas/clubs.js'
+import { seasons } from './schemas/seasons.js'
 import { divisions } from './schemas/index.js'
 import { teams } from './schemas/teams.js'
 import { players } from './schemas/players.js'
@@ -11,8 +12,7 @@ import { pools } from './schemas/pools.js'
 import { pool_team } from './schemas/index.js'
 import { encounters } from './schemas/index.js'
 import { encounter_lineup } from './schemas/index.js'
-import { single_matchs } from './schemas/index.js'
-import { double_matchs } from './schemas/index.js'
+import { encounter_matches } from './schemas/index.js'
 import { team_ranking } from './schemas/index.js'
 
 async function insert(db: Database, table: unknown, values: unknown[]) {
@@ -20,6 +20,7 @@ async function insert(db: Database, table: unknown, values: unknown[]) {
 }
 
 export async function seedDatabase(db: Database) {
+  await insert(db, seasons, demoSeedData.seasons)
   await insert(db, clubs, demoSeedData.clubs)
   await insert(db, divisions, demoSeedData.divisions)
   await insert(db, teams, demoSeedData.teams)
@@ -29,6 +30,5 @@ export async function seedDatabase(db: Database) {
   await insert(db, team_ranking, demoSeedData.teamRankings)
   await insert(db, encounters, demoSeedData.encounters)
   await insert(db, encounter_lineup, demoSeedData.encounterLineup)
-  await insert(db, single_matchs, demoSeedData.singleMatches)
-  await insert(db, double_matchs, demoSeedData.doubleMatches)
+  await insert(db, encounter_matches, demoSeedData.matches)
 }

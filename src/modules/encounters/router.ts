@@ -8,6 +8,19 @@ export const createEncountersRouter = (
   return async (fastify) => {
     fastify.post(
       '/encounters-search',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              dayNumber: { type: 'number' },
+              season: { type: 'string', pattern: String.raw`^\d{4}/\d{4}$` },
+              phase: { type: 'number', enum: [1, 2] },
+            },
+          },
+        },
+      },
       createSearchEncountersHandler(appServices)
     )
   }

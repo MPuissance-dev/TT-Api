@@ -9,7 +9,7 @@ const app = async () => {
     console.log("✨ Pour lancer le seed, exécutez 'npm run seed' ✨")
     console.log('Lancement du serveur.. 🚀')
     console.log('-------------------------------------')
-    
+
     const fastify = await createServer()
 
     const port = Number(fastify.config.PORT)

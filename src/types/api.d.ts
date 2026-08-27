@@ -4,114 +4,124 @@
  */
 
 export interface paths {
-    "/encounters-search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Recherche le détails des rencontres de championnat spécifiées */
-        post: operations["searchEncounters"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+  '/encounters-search': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Recherche le détails des rencontres de championnat spécifiées */
+    post: operations['searchEncounters']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
-export type webhooks = Record<string, never>;
+export type webhooks = Record<string, never>
 export interface components {
-    schemas: {
-        EncounterSearchRequest: {
-            /** @description Journée de championnat */
-            dayNumber?: number;
-        };
-        Encounter: {
-            /**
-             * Format: uuid
-             * @description Identifiant de la rencontre
-             */
-            id?: string;
-            /** @description Division de la rencontre */
-            division?: string;
-            /** @description Poule de la rencontre */
-            pool?: string;
-            /** @description Journée de championnat */
-            championshipDayNumber?: number | null;
-            /**
-             * Format: date
-             * @description Date de la rencontre
-             */
-            played_at?: string;
-            status?: components["schemas"]["EncounterStatus"];
-            /** @description Score de l'équipe à domicile */
-            homeScore?: number | null;
-            /** @description Score de l'équipe à l'extérieur */
-            awayScore?: number | null;
-            /** @description Equipe à domicile */
-            homeTeam?: components["schemas"]["Team"];
-            /** @description Equipe à l'extérieur */
-            awayTeam?: components["schemas"]["Team"];
-        };
-        Team: {
-            /**
-             * Format: uuid
-             * @description Identifiant de l'équipe
-             */
-            id?: string;
-            /** @description Nom du club */
-            clubName?: string;
-            /** @description Est une équipe Mellinet ? */
-            isMellinet?: boolean;
-            lineup?: components["schemas"]["Player"][];
-        };
-        Player: {
-            /**
-             * Format: uuid
-             * @description Identifiant du joueur
-             */
-            id?: string;
-            /** @description Nom du joueur */
-            fullName?: string;
-            /** @description Nombre de points du joueur */
-            points?: number;
-        };
-        /** @enum {string} */
-        EncounterStatus: "SCHEDULED" | "PLAYED" | "REPORTED";
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+  schemas: {
+    EncounterSearchRequest: {
+      /** @description Journée de championnat */
+      dayNumber?: number
+      /** @description Saison au format 2025/2026. Par défaut, la saison en cours */
+      season?: string
+      /** @description Phase du championnat */
+      phase?: 1 | 2
+    }
+    Encounter: {
+      /**
+       * Format: uuid
+       * @description Identifiant de la rencontre
+       */
+      id?: string
+      /** @description Division de la rencontre */
+      division?: string
+      /** @description Poule de la rencontre */
+      pool?: string
+      /** @description Saison au format 2025/2026 */
+      season?: string
+      /** @description Phase du championnat */
+      phase?: number
+      /** @description Journée de championnat */
+      championshipDayNumber?: number | null
+      /**
+       * Format: date
+       * @description Date de la rencontre
+       */
+      played_at?: string
+      status?: components['schemas']['EncounterStatus']
+      /** @description Score de l'équipe à domicile */
+      homeScore?: number | null
+      /** @description Score de l'équipe à l'extérieur */
+      awayScore?: number | null
+      /** @description Equipe à domicile */
+      homeTeam?: components['schemas']['Team']
+      /** @description Equipe à l'extérieur */
+      awayTeam?: components['schemas']['Team']
+    }
+    Team: {
+      /**
+       * Format: uuid
+       * @description Identifiant de l'équipe
+       */
+      id?: string
+      /** @description Nom de l'équipe, par exemple Mellinet TT 3 */
+      name?: string
+      /** @description Nom du club */
+      clubName?: string
+      /** @description Est une équipe du club suivi ? */
+      isMellinet?: boolean
+      lineup?: components['schemas']['Player'][]
+    }
+    Player: {
+      /**
+       * Format: uuid
+       * @description Identifiant du joueur
+       */
+      id?: string
+      /** @description Nom du joueur */
+      fullName?: string
+      /** @description Nombre de points du joueur */
+      points?: number
+    }
+    /** @enum {string} */
+    EncounterStatus: 'SCHEDULED' | 'PLAYED' | 'REPORTED'
+  }
+  responses: never
+  parameters: never
+  requestBodies: never
+  headers: never
+  pathItems: never
 }
-export type $defs = Record<string, never>;
+export type $defs = Record<string, never>
 export interface operations {
-    searchEncounters: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EncounterSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Résultats trouvés */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Encounter"][];
-                };
-            };
-        };
-    };
+  searchEncounters: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EncounterSearchRequest']
+      }
+    }
+    responses: {
+      /** @description Résultats trouvés */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['Encounter'][]
+        }
+      }
+    }
+  }
 }

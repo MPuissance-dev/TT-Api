@@ -3,7 +3,7 @@ import env from '@fastify/env'
 import { createEncountersRouter } from './modules/encounters/router.js'
 import { createFfttRouter } from './modules/fftt/router.js'
 import { createFfttClient } from './modules/fftt/client.js'
-import { createFfttSynchronizer } from './modules/fftt/synchronizer.js'
+import { createFfttSynchronizer } from './modules/fftt/index.js'
 import { services as defaultServices, type AppServices } from './services.js'
 
 const schema = {
@@ -26,6 +26,15 @@ const schema = {
     FFTT_SERIE: {
       type: 'string',
     },
+    FFTT_CLUB_NUMBER: {
+      type: 'string',
+    },
+    FFTT_MAX_CONCURRENT_REQUESTS: {
+      type: 'string',
+    },
+    FFTT_ATTEMPTS: {
+      type: 'string',
+    },
   },
 }
 
@@ -37,6 +46,9 @@ declare module 'fastify' {
       FFTT_APPILICATION_CODE?: string
       FFTT_PWD?: string
       FFTT_SERIE?: string
+      FFTT_CLUB_NUMBER?: string
+      FFTT_MAX_CONCURRENT_REQUESTS?: string
+      FFTT_ATTEMPTS?: string
     }
   }
 }
@@ -94,21 +106,40 @@ export const createServer = async ({
     reply.status(500).send({ error: 'Internal server error' })
   })
 
+  const positiveNumber = (value: string | undefined): number | undefined => {
+    const parsed = Number(value)
+    return value === undefined || Number.isNaN(parsed) || parsed < 1
+      ? undefined
+      : parsed
+  }
+
   const configuredFftt = createFfttClient({
     applicationCode: fastify.config.FFTT_APPILICATION_CODE,
     password: fastify.config.FFTT_PWD,
     serie: fastify.config.FFTT_SERIE,
+    maxConcurrentRequests: positiveNumber(
+      fastify.config.FFTT_MAX_CONCURRENT_REQUESTS
+    ),
+    attempts: positiveNumber(fastify.config.FFTT_ATTEMPTS),
+    onRetry: (message, context) => fastify.log.warn(context, message),
   })
   const configuredServices: AppServices = {
     ...appServices,
     fftt: configuredFftt,
-    ffttSynchronization: createFfttSynchronizer(configuredFftt, undefined, (message, context) =>
-      fastify.log.warn(context, message)
+    ffttSynchronization: createFfttSynchronizer(
+      configuredFftt,
+      undefined,
+      (message, context) => fastify.log.info(context, message)
     ),
+    followedClubNumber: fastify.config.FFTT_CLUB_NUMBER,
   }
 
-  await fastify.register(createEncountersRouter(configuredServices), { prefix: '/api/encounters' })
-  await fastify.register(createFfttRouter(configuredServices), { prefix: '/api/fftt' })
+  await fastify.register(createEncountersRouter(configuredServices), {
+    prefix: '/api/encounters',
+  })
+  await fastify.register(createFfttRouter(configuredServices), {
+    prefix: '/api/fftt',
+  })
 
   return fastify
 }

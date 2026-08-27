@@ -18,7 +18,13 @@ export const team_ranking = pgTable(
     played: integer('played'),
     wins: integer('wins'),
     draws: integer('draws'),
-    looses: integer('looses'),
+    losses: integer('losses'),
+    /** Points deducted by the federation, a tie breaker of the ranking. */
+    penalties: integer('penalties'),
+    /** Individual games won and lost, the first tie breaker of the ranking. */
+    games_won: integer('games_won'),
+    games_lost: integer('games_lost'),
+
     ...timestamps,
   },
   (table) => [unique().on(table.pool_id, table.team_id)]

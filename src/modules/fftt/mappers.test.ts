@@ -1,7 +1,18 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { mapFfttClub, mapFfttPlayer } from './mappers.js'
-import type { FfttLicense } from './models.js'
+import {
+  getGameWinner,
+  lineupPosition,
+  mapFfttClub,
+  mapFfttPlayer,
+  splitGameLabel,
+} from './mappers.js'
+import type { FfttGame, FfttLicense } from './models.js'
+
+const game: FfttGame = {
+  homePlayerLabel: 'MARTIN Alice',
+  awayPlayerLabel: 'DURAND Bob',
+}
 
 test('mapFfttClub maps the external club identity fields', () => {
   assert.deepEqual(
@@ -54,4 +65,44 @@ test('mapFfttPlayer rejects a player without points', () => {
       ),
     /No points found for FFTT player 4412345678/
   )
+})
+
+test('splitGameLabel keeps a single name untouched', () => {
+  assert.deepEqual(splitGameLabel('MARTIN Alice'), ['MARTIN Alice'])
+})
+
+test('splitGameLabel splits the two players of a double', () => {
+  assert.deepEqual(splitGameLabel('MARTIN Alice - BERNARD Chloé'), [
+    'MARTIN Alice',
+    'BERNARD Chloé',
+  ])
+  assert.deepEqual(splitGameLabel('MARTIN Alice/BERNARD Chloé'), [
+    'MARTIN Alice',
+    'BERNARD Chloé',
+  ])
+})
+
+test('splitGameLabel leaves a composed name alone', () => {
+  assert.deepEqual(splitGameLabel('DUPONT Jean-Pierre'), ['DUPONT Jean-Pierre'])
+})
+
+test('getGameWinner reads the winner from the sets', () => {
+  assert.equal(getGameWinner({ ...game, homeScore: 3, awayScore: 1 }), 'home')
+  assert.equal(getGameWinner({ ...game, homeScore: 2, awayScore: 3 }), 'away')
+})
+
+test('getGameWinner stays unknown when the game was not played', () => {
+  assert.equal(getGameWinner(game), undefined)
+  assert.equal(
+    getGameWinner({ ...game, homeScore: 0, awayScore: 0 }),
+    undefined
+  )
+})
+
+test('lineupPosition names the slots of each side', () => {
+  assert.equal(lineupPosition('home', 0), 'A')
+  assert.equal(lineupPosition('home', 3), 'D')
+  assert.equal(lineupPosition('away', 0), 'W')
+  assert.equal(lineupPosition('away', 3), 'Z')
+  assert.equal(lineupPosition('home', 4), undefined)
 })

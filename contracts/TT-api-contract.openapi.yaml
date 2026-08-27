@@ -43,6 +43,13 @@ components:
         dayNumber:
           description: Journée de championnat
           type: number
+        season:
+          description: Saison au format 2025/2026. Par défaut, la saison en cours
+          type: string
+        phase:
+          description: Phase du championnat
+          type: number
+          enum: [1, 2]
 
     Encounter:
       type: object
@@ -57,6 +64,12 @@ components:
         pool:
           description: Poule de la rencontre
           type: string
+        season:
+          description: Saison au format 2025/2026
+          type: string
+        phase:
+          description: Phase du championnat
+          type: number
         championshipDayNumber:
           description: Journée de championnat
           type: number
@@ -91,11 +104,14 @@ components:
           description: Identifiant de l'équipe
           type: string
           format: uuid
+        name:
+          description: Nom de l'équipe, par exemple Mellinet TT 3
+          type: string
         clubName:
           description: Nom du club
           type: string
         isMellinet:
-          description: Est une équipe Mellinet ?
+          description: Est une équipe du club suivi ?
           type: boolean
         lineup:
           type: array

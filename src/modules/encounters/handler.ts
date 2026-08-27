@@ -7,11 +7,19 @@ type SearchEncountersRequest = FastifyRequest<{
   Body: components['schemas']['EncounterSearchRequest']
 }>
 
-export const createSearchEncountersHandler = (appServices: AppServices = services) => {
+export const createSearchEncountersHandler = (
+  appServices: AppServices = services
+) => {
   return async (request: SearchEncountersRequest, reply: FastifyReply) => {
-    const { dayNumber } = request.body
-    const rows = await appServices.encounters.searchEncounters(dayNumber)
-    const encounters = rows.map((row) => mapEncounter(row))
-    reply.send(encounters)
+    const { dayNumber, season, phase } = request.body
+    const rows = await appServices.encounters.searchEncounters({
+      dayNumber,
+      season,
+      phase,
+    })
+
+    return reply.send(
+      rows.map((row) => mapEncounter(row, appServices.followedClubNumber))
+    )
   }
 }
