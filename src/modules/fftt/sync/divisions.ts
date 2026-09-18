@@ -3,7 +3,7 @@ import type { FfttTeam } from '../models.js'
 import { phaseFromDate, phaseFromLabel } from '../../seasons/season.js'
 import type { SynchronizationContext } from './context.js'
 import { upsertDivision } from './repository.js'
-import { synchronizePool } from './pools.js'
+import { synchronizePool, poolExternalIdOf } from './pools.js'
 
 export interface DivisionSource {
   externalId: string
@@ -65,14 +65,25 @@ export const synchronizeDivision = async (
   context.summary.divisions += 1
 
   const sourcePools = await context.client.listPools(division.externalId)
+
+  // The teams of the club already name the pools they play in, so the ranking
+  // of every other pool of the division never has to be downloaded.
+  const knownPools = sourcePools.filter((sourcePool) =>
+    division.poolExternalIds.has(poolExternalIdOf(sourcePool))
+  )
+  // The filter is dropped when it matches nothing, as the ranking is then the
+  // only way left to tell which pools of the division concern the club.
+  const relevantPools = knownPools.length === 0 ? sourcePools : knownPools
+
   context.log('FFTT division loaded', {
     divisionId: division.externalId,
     divisionLabel: division.label,
     phase,
     poolCount: sourcePools.length,
+    relevantPoolCount: relevantPools.length,
   })
 
-  for (const sourcePool of sourcePools) {
+  for (const sourcePool of relevantPools) {
     await synchronizePool(context, {
       division,
       localDivisionId,

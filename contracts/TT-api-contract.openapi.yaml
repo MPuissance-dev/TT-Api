@@ -110,9 +110,6 @@ components:
         clubName:
           description: Nom du club
           type: string
-        isMellinet:
-          description: Est une équipe du club suivi ?
-          type: boolean
         lineup:
           type: array
           items:

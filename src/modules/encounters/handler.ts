@@ -18,8 +18,6 @@ export const createSearchEncountersHandler = (
       phase,
     })
 
-    return reply.send(
-      rows.map((row) => mapEncounter(row, appServices.followedClubNumber))
-    )
+    return reply.send(rows.map((row) => mapEncounter(row)))
   }
 }

@@ -7,6 +7,31 @@ npm update
 npx npm-check-updates -u && npm install
 ```
 
+### Typage et lint
+
+```bash
+npm run typecheck   # TypeScript 7
+npm run lint        # ESLint
+```
+
+Le projet utilise **TypeScript 7 et TypeScript 6 cote a cote**, comme le
+recommande l'annonce de TypeScript 7. La raison est que ni `typescript-eslint`
+ni `openapi-typescript` ne supportent encore l'API de TS 7 : ils refusent de
+demarrer au-dela de TS 6.
+
+- `typescript` est en 6.0.3, et c'est la version que resolvent les outils et
+  l'editeur ;
+- `typescript7` est un alias npm vers TypeScript 7, utilise uniquement par
+  `npm run typecheck`.
+
+Attention : `npx tsc` invoque **TypeScript 6**. Pour verifier le projet avec
+TypeScript 7, passer par `npm run typecheck`. Les deux versions compilent le
+projet sans erreur aujourd'hui.
+
+Quand `typescript-eslint` supportera TS >= 7.1
+([issue #10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940)),
+l'alias pourra etre retire et `typescript` repasser en 7.
+
 ### Drizzle
 
 Les commandes suivantes utilisent la configuration définie dans `drizzle.config.ts`.
@@ -184,9 +209,11 @@ Corps de requete (tous les champs sont optionnels) :
 | `FFTT_APPILICATION_CODE` | Code application fourni par la FFTT |
 | `FFTT_PWD` | Mot de passe de l'application FFTT |
 | `FFTT_SERIE` | Serie associee a l'application FFTT |
-| `FFTT_CLUB_NUMBER` | Numero du club suivi, utilise par defaut a la synchronisation et pour marquer `isMellinet` |
+| `FFTT_CLUB_NUMBER` | Numero du club suivi, utilise par defaut a la synchronisation |
 | `FFTT_MAX_CONCURRENT_REQUESTS` | Requetes FFTT simultanees au maximum (defaut 4) |
-| `FFTT_ATTEMPTS` | Nombre de tentatives par requete, la premiere comprise (defaut 3) |
+| `FFTT_ATTEMPTS` | Nombre de tentatives par requete, la premiere comprise (defaut 5) |
+| `FFTT_MIN_REQUEST_INTERVAL_MS` | Delai minimum entre deux requetes FFTT (defaut 200) |
+| `FFTT_RATE_LIMIT_COOLDOWN_MS` | Pause appliquee sur un HTTP 429 sans `Retry-After` (defaut 15000) |
 
 ### Mise a jour incrementale
 
@@ -213,6 +240,19 @@ Chaque tentative recalcule sa signature, car la FFTT refuse un horodatage rejoue
 Le nombre de requetes simultanees est plafonne au niveau du client, et les
 feuilles de match d'une poule sont telechargees par lots pendant que les
 ecritures restent sequentielles.
+
+Le debit est lisse en plus de la concurrence : deux requetes sont toujours
+separees d'au moins `FFTT_MIN_REQUEST_INTERVAL_MS`, ce qui evite les rafales.
+Sur un HTTP 429, c'est tout le client qui est mis en pause, et pas seulement la
+requete refusee : le delai annonce par l'en-tete `Retry-After` est respecte, ou
+a defaut `FFTT_RATE_LIMIT_COOLDOWN_MS`. Les requetes en attente repartent une
+fois ce delai ecoule.
+
+Le volume d'appels est par ailleurs limite a la source : les poules d'une
+division sont filtrees a partir des liens de resultats des equipes du club, donc
+le classement des poules ou le club ne joue pas n'est jamais telecharge. Le
+filtre est abandonne quand aucun lien ne nomme de poule, le classement redevenant
+alors le seul moyen d'identifier les poules concernees.
 
 Les effectifs des clubs adverses ne sont plus telecharges pour toute la poule :
 un effectif n'est charge que lorsqu'une feuille de match en a besoin, et une

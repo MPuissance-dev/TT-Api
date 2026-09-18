@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createConcurrencyLimiter, mapWithConcurrency } from './concurrency.js'
+import {
+  createConcurrencyLimiter,
+  createPacer,
+  mapWithConcurrency,
+} from './concurrency.js'
 
 const deferred = () => {
   let resolve: () => void = () => {}
@@ -81,4 +85,60 @@ test('a failing call frees its slot', async () => {
   )
 
   assert.equal(await limit(async () => 'ok'), 'ok')
+})
+
+test('calls are spaced by the requested interval', async () => {
+  const waits: number[] = []
+  let clock = 0
+  const pacer = createPacer(100, {
+    now: () => clock,
+    sleep: async (delayMs) => {
+      waits.push(delayMs)
+      clock += delayMs
+    },
+  })
+
+  await pacer.acquire()
+  await pacer.acquire()
+  await pacer.acquire()
+
+  assert.deepEqual(waits, [100, 100], 'the first call leaves immediately')
+})
+
+test('a pause holds back the calls already waiting', async () => {
+  const waits: number[] = []
+  let clock = 0
+  const pacer = createPacer(10, {
+    now: () => clock,
+    sleep: async (delayMs) => {
+      waits.push(delayMs)
+      clock += delayMs
+      if (waits.length === 1) {
+        pacer.pause(500)
+      }
+    },
+  })
+
+  await pacer.acquire()
+  await pacer.acquire()
+
+  assert.deepEqual(
+    waits,
+    [10, 500],
+    'the deadline is read again after the pause'
+  )
+})
+
+test('an instant sleep does not turn the pacer into a busy loop', async () => {
+  let naps = 0
+  const pacer = createPacer(1_000, {
+    sleep: async () => {
+      naps += 1
+    },
+  })
+
+  await pacer.acquire()
+  await pacer.acquire()
+
+  assert.equal(naps, 1)
 })

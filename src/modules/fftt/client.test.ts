@@ -216,3 +216,103 @@ test('the FFTT is never asked more than the configured number of requests at onc
     globalThis.fetch = originalFetch
   }
 })
+
+test('a rate limited FFTT request is retried after the delay it asks for', async () => {
+  const originalFetch = globalThis.fetch
+  const naps: number[] = []
+  let attempts = 0
+
+  globalThis.fetch = async () => {
+    attempts += 1
+    return attempts < 3
+      ? new Response('', { status: 429, headers: { 'retry-after': '2' } })
+      : rosterResponse()
+  }
+
+  try {
+    const players = await testClient({
+      minRequestIntervalMs: 0,
+      sleep: async (delayMs: number) => {
+        naps.push(delayMs)
+      },
+    }).listPlayersByClub('44123456')
+
+    assert.equal(attempts, 3)
+    assert.equal(players.length, 1)
+    assert.equal(naps.length, 2)
+    for (const delayMs of naps) {
+      assert.ok(
+        delayMs > 1_500 && delayMs <= 2_000,
+        `Retry-After is honoured, waited ${delayMs}ms`
+      )
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('a rate limit holds back the requests that have not left yet', async () => {
+  const originalFetch = globalThis.fetch
+  const naps: number[] = []
+  let attempts = 0
+
+  globalThis.fetch = async () => {
+    attempts += 1
+    return attempts === 1
+      ? new Response('', { status: 429, headers: { 'retry-after': '3' } })
+      : rosterResponse()
+  }
+
+  try {
+    const client = testClient({
+      maxConcurrentRequests: 1,
+      minRequestIntervalMs: 0,
+      sleep: async (delayMs: number) => {
+        naps.push(delayMs)
+      },
+    })
+
+    await Promise.all([
+      client.listPlayersByClub('44123456'),
+      client.listPlayersByClub('44123456'),
+    ])
+
+    assert.equal(attempts, 3, 'the refused request was sent again')
+    assert.equal(
+      naps.filter((delayMs) => delayMs > 2_500).length,
+      2,
+      'the queued request waits for the cooldown, not only the retry'
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('a rate limit without a delay falls back on the configured cooldown', async () => {
+  const originalFetch = globalThis.fetch
+  const naps: number[] = []
+  let attempts = 0
+
+  globalThis.fetch = async () => {
+    attempts += 1
+    return attempts === 1 ? new Response('', { status: 429 }) : rosterResponse()
+  }
+
+  try {
+    await testClient({
+      minRequestIntervalMs: 0,
+      rateLimitCooldownMs: 7_000,
+      sleep: async (delayMs: number) => {
+        naps.push(delayMs)
+      },
+    }).listPlayersByClub('44123456')
+
+    assert.equal(naps.length, 1)
+    assert.ok(
+      (naps[0] ?? 0) > 6_500 && (naps[0] ?? 0) <= 7_000,
+      'the configured cooldown is applied'
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})

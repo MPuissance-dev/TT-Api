@@ -23,13 +23,18 @@ export interface PoolContext {
   localPoolId: string
 }
 
+/**
+ * The FFTT identifies a pool through the `cx_poule` parameter of its result
+ * link, and only falls back to a plain identifier when there is no link.
+ */
+export const poolExternalIdOf = (sourcePool: FfttPool): string =>
+  linkParameter(sourcePool.link ?? '', 'cx_poule') ?? sourcePool.externalId
+
 export const synchronizePool = async (
   context: SynchronizationContext,
   input: PoolStepInput
 ): Promise<void> => {
-  const poolExternalId =
-    linkParameter(input.sourcePool.link ?? '', 'cx_poule') ??
-    input.sourcePool.externalId
+  const poolExternalId = poolExternalIdOf(input.sourcePool)
 
   const rankings = await context.client.listPoolRankings(
     input.division.externalId,

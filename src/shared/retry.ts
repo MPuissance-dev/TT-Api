@@ -5,6 +5,12 @@ export interface RetryOptions {
   baseDelayMs: number
   /** Decides whether a failure is worth another attempt. */
   isRetryable: (error: unknown) => boolean
+  /**
+   * Overrides how long to wait before the next attempt. Receives the delay the
+   * exponential backoff would have used, so a remote service that states its
+   * own delay can be honoured instead.
+   */
+  delayFor?: (error: unknown, attempt: number, backoffDelayMs: number) => number
   onRetry?: (error: unknown, attempt: number, delayMs: number) => void
   sleep?: (delayMs: number) => Promise<void>
 }
@@ -33,9 +39,14 @@ export const withRetry = async <T>(
         throw error
       }
 
-      const delayMs = options.baseDelayMs * 2 ** (attempt - 1)
+      const backoffDelayMs = options.baseDelayMs * 2 ** (attempt - 1)
+      const delayMs =
+        options.delayFor?.(error, attempt, backoffDelayMs) ?? backoffDelayMs
       options.onRetry?.(error, attempt, delayMs)
-      await sleep(delayMs)
+
+      if (delayMs > 0) {
+        await sleep(delayMs)
+      }
     }
   }
 

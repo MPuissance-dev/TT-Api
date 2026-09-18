@@ -61,3 +61,66 @@ export const createConcurrencyLimiter = (limit: number) => {
     }
   }
 }
+
+const defaultSleep = (delayMs: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, delayMs))
+
+/**
+ * Spaces out departures so a remote service never sees a burst, and can be told
+ * to hold everything back when it answers that it is being called too often.
+ */
+export interface Pacer {
+  /** Resolves once another call is allowed to leave. */
+  acquire(): Promise<void>
+  /** Holds every subsequent call back for at least the given delay. */
+  pause(delayMs: number): void
+}
+
+export interface PacerOptions {
+  now?: () => number
+  sleep?: (delayMs: number) => Promise<void>
+}
+
+export const createPacer = (
+  minIntervalMs: number,
+  options: PacerOptions = {}
+): Pacer => {
+  const now = options.now ?? Date.now
+  const sleep = options.sleep ?? defaultSleep
+
+  let nextAllowedAt = 0
+  // Incremented by every pause, so a call already waiting knows the deadline it
+  // read has moved and must be read again.
+  let pauseCount = 0
+  // Callers are queued one behind the other, otherwise they would all read the
+  // same free slot at once and leave together.
+  let queue: Promise<void> = Promise.resolve()
+
+  const gate = async (): Promise<void> => {
+    for (let seen = -1; seen !== pauseCount;) {
+      seen = pauseCount
+      const waitMs = nextAllowedAt - now()
+      if (waitMs > 0) {
+        await sleep(waitMs)
+      }
+    }
+
+    // The deadline, not the clock, carries the pace: a caller that was let
+    // through early still pushes the next one back by a full interval.
+    nextAllowedAt = Math.max(nextAllowedAt, now()) + minIntervalMs
+  }
+
+  return {
+    acquire() {
+      const departure = queue.then(gate)
+      // A failed departure must not poison the queue for the calls behind it.
+      queue = departure.catch(() => undefined)
+      return departure
+    },
+
+    pause(delayMs) {
+      nextAllowedAt = Math.max(nextAllowedAt, now() + delayMs)
+      pauseCount += 1
+    },
+  }
+}

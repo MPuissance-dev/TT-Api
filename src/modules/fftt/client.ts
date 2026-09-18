@@ -1,6 +1,9 @@
 import { createHash, createHmac } from 'node:crypto'
 import { XMLParser } from 'fast-xml-parser'
-import { createConcurrencyLimiter } from '../../shared/concurrency.js'
+import {
+  createConcurrencyLimiter,
+  createPacer,
+} from '../../shared/concurrency.js'
 import { withRetry } from '../../shared/retry.js'
 import type {
   FfttClub,
@@ -27,9 +30,14 @@ import type {
 
 const defaultBaseUrl = 'https://www.fftt.com/mobile/pxml'
 const requestTimeoutMs = 10_000
-const defaultAttempts = 3
-const defaultRetryDelayMs = 500
+const defaultAttempts = 5
+const defaultRetryDelayMs = 1_000
 const defaultMaxConcurrentRequests = 4
+/** Minimum spacing between two requests, so the FFTT never sees a burst. */
+const defaultMinRequestIntervalMs = 200
+/** Applied when the FFTT reports a rate limit without stating how long to wait. */
+const defaultRateLimitCooldownMs = 15_000
+const rateLimitedStatus = 429
 
 export interface FfttClientConfig {
   applicationCode?: string | undefined
@@ -43,6 +51,10 @@ export interface FfttClientConfig {
   retryDelayMs?: number | undefined
   /** Maximum number of requests sent to the FFTT at the same time. */
   maxConcurrentRequests?: number | undefined
+  /** Minimum delay between two requests, whatever the concurrency. */
+  minRequestIntervalMs?: number | undefined
+  /** Fallback pause when the FFTT rate limits without a `Retry-After` header. */
+  rateLimitCooldownMs?: number | undefined
   onRetry?:
     ((message: string, context: Record<string, unknown>) => void) | undefined
   sleep?: ((delayMs: number) => Promise<void>) | undefined
@@ -50,10 +62,37 @@ export interface FfttClientConfig {
 
 /** A FFTT response that carries an HTTP status, as opposed to a network failure. */
 export class FfttHttpError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    /** Delay requested through the `Retry-After` header, when there was one. */
+    readonly retryAfterMs?: number | undefined
+  ) {
     super(`FFTT API request failed with status ${status}`)
     this.name = 'FfttHttpError'
   }
+}
+
+/**
+ * `Retry-After` is either a number of seconds or an HTTP date, and a rate
+ * limited service is free to send neither.
+ */
+const retryAfterMs = (header: string | null): number | undefined => {
+  if (header === null || header.trim().length === 0) {
+    return undefined
+  }
+
+  const seconds = Number(header)
+  if (!Number.isNaN(seconds)) {
+    return seconds <= 0 ? undefined : seconds * 1_000
+  }
+
+  const date = Date.parse(header)
+  if (Number.isNaN(date)) {
+    return undefined
+  }
+
+  const delayMs = date - Date.now()
+  return delayMs <= 0 ? undefined : delayMs
 }
 
 /** A functional error reported inside the XML body: retrying would not help. */
@@ -71,7 +110,11 @@ const isRetryable = (error: unknown): boolean => {
 
   if (error instanceof FfttHttpError) {
     // Only the failures the FFTT may recover from on its own.
-    return error.status === 408 || error.status === 429 || error.status >= 500
+    return (
+      error.status === 408 ||
+      error.status === rateLimitedStatus ||
+      error.status >= 500
+    )
   }
 
   // Timeouts, resets and DNS failures are all worth another attempt.
@@ -150,25 +193,24 @@ const createRequestParameters = (
   }
 }
 
+const isXmlNode = (value: unknown): value is XmlNode =>
+  typeof value === 'object' && value !== null
+
 const findNodes = (value: unknown, name: string): XmlNode[] => {
   if (Array.isArray(value)) {
     return value.flatMap((item) => findNodes(item, name))
   }
 
-  if (typeof value !== 'object' || value === null) {
+  if (!isXmlNode(value)) {
     return []
   }
 
-  const object = value as XmlNode
-  const nodes = object[name]
-  const matches = Array.isArray(nodes)
-    ? nodes.filter(
-        (node): node is XmlNode => typeof node === 'object' && node !== null
-      )
-    : typeof nodes === 'object' && nodes !== null
-      ? [nodes as XmlNode]
-      : []
-  const nested = Object.entries(object)
+  // The parser yields a lone object when a tag appears once and an array when
+  // it repeats, so both shapes are narrowed down to a list of nodes.
+  const found = value[name]
+  const matches = (Array.isArray(found) ? found : [found]).filter(isXmlNode)
+
+  const nested = Object.entries(value)
     .filter(([key]) => key !== name)
     .flatMap(([, child]) => findNodes(child, name))
 
@@ -191,11 +233,11 @@ const findErrorMessage = (value: unknown): string | undefined => {
     return undefined
   }
 
-  if (typeof value !== 'object' || value === null) {
+  if (!isXmlNode(value)) {
     return undefined
   }
 
-  for (const [key, child] of Object.entries(value as XmlNode)) {
+  for (const [key, child] of Object.entries(value)) {
     if (key === 'erreur') {
       return typeof child === 'string' ? child : JSON.stringify(child)
     }
@@ -239,7 +281,9 @@ const numberValue = (node: XmlNode, field: string): number | undefined => {
 
   const parsed = Number(value)
   if (Number.isNaN(parsed)) {
-    throw new Error(`Invalid numeric FFTT response field ${field}: ${value}`)
+    throw new TypeError(
+      `Invalid numeric FFTT response field ${field}: ${value}`
+    )
   }
 
   return parsed
@@ -491,6 +535,10 @@ export const createFfttClient = (config: FfttClientConfig) => {
   const limit = createConcurrencyLimiter(
     config.maxConcurrentRequests ?? defaultMaxConcurrentRequests
   )
+  const pacer = createPacer(
+    config.minRequestIntervalMs ?? defaultMinRequestIntervalMs,
+    config.sleep === undefined ? {} : { sleep: config.sleep }
+  )
 
   const sendOnce = async (
     script: string,
@@ -510,7 +558,10 @@ export const createFfttClient = (config: FfttClientConfig) => {
     })
 
     if (!response.ok) {
-      throw new FfttHttpError(response.status)
+      throw new FfttHttpError(
+        response.status,
+        retryAfterMs(response.headers.get('retry-after'))
+      )
     }
 
     const parsed = parser.parse(await response.text())
@@ -527,20 +578,47 @@ export const createFfttClient = (config: FfttClientConfig) => {
     params: Record<string, string>
   ): Promise<unknown> =>
     limit(() =>
-      withRetry(() => sendOnce(script, params), {
-        attempts: config.attempts ?? defaultAttempts,
-        baseDelayMs: config.retryDelayMs ?? defaultRetryDelayMs,
-        isRetryable,
-        onRetry: (error, attempt, delayMs) => {
-          config.onRetry?.('FFTT request failed, retrying', {
-            script,
-            attempt,
-            delayMs,
-            reason: error instanceof Error ? error.message : String(error),
-          })
+      withRetry(
+        async () => {
+          await pacer.acquire()
+          return sendOnce(script, params)
         },
-        ...(config.sleep === undefined ? {} : { sleep: config.sleep }),
-      })
+        {
+          attempts: config.attempts ?? defaultAttempts,
+          baseDelayMs: config.retryDelayMs ?? defaultRetryDelayMs,
+          isRetryable,
+          delayFor: (error, _attempt, backoffDelayMs) => {
+            if (
+              !(error instanceof FfttHttpError) ||
+              error.status !== rateLimitedStatus
+            ) {
+              return backoffDelayMs
+            }
+
+            // Being rate limited concerns every request, not just this one, so
+            // the whole client is held back and the wait happens in the pacer
+            // rather than here.
+            pacer.pause(
+              Math.max(
+                error.retryAfterMs ??
+                  config.rateLimitCooldownMs ??
+                  defaultRateLimitCooldownMs,
+                backoffDelayMs
+              )
+            )
+            return 0
+          },
+          onRetry: (error, attempt, delayMs) => {
+            config.onRetry?.('FFTT request failed, retrying', {
+              script,
+              attempt,
+              delayMs,
+              reason: error instanceof Error ? error.message : String(error),
+            })
+          },
+          ...(config.sleep === undefined ? {} : { sleep: config.sleep }),
+        }
+      )
     )
 
   const nodes = async (
@@ -693,7 +771,7 @@ export const createFfttClient = (config: FfttClientConfig) => {
           action: 'classement',
           auto: '1',
           D1: divisionId,
-          ...({ cx_poule: poolId }),
+          cx_poule: poolId,
         }
       )
       return alternateRankings.map((node) => mapRanking(node, poolId))

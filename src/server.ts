@@ -35,6 +35,12 @@ const schema = {
     FFTT_ATTEMPTS: {
       type: 'string',
     },
+    FFTT_MIN_REQUEST_INTERVAL_MS: {
+      type: 'string',
+    },
+    FFTT_RATE_LIMIT_COOLDOWN_MS: {
+      type: 'string',
+    },
   },
 }
 
@@ -49,6 +55,8 @@ declare module 'fastify' {
       FFTT_CLUB_NUMBER?: string
       FFTT_MAX_CONCURRENT_REQUESTS?: string
       FFTT_ATTEMPTS?: string
+      FFTT_MIN_REQUEST_INTERVAL_MS?: string
+      FFTT_RATE_LIMIT_COOLDOWN_MS?: string
     }
   }
 }
@@ -121,6 +129,12 @@ export const createServer = async ({
       fastify.config.FFTT_MAX_CONCURRENT_REQUESTS
     ),
     attempts: positiveNumber(fastify.config.FFTT_ATTEMPTS),
+    minRequestIntervalMs: positiveNumber(
+      fastify.config.FFTT_MIN_REQUEST_INTERVAL_MS
+    ),
+    rateLimitCooldownMs: positiveNumber(
+      fastify.config.FFTT_RATE_LIMIT_COOLDOWN_MS
+    ),
     onRetry: (message, context) => fastify.log.warn(context, message),
   })
   const configuredServices: AppServices = {

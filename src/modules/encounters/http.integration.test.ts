@@ -13,12 +13,10 @@ if (databaseUrl === undefined) {
   )
 }
 
-const followedClubNumber = 'P001'
-
 const testConfig = {
   PORT: '0',
   DATABASE_URL: databaseUrl,
-  FFTT_CLUB_NUMBER: followedClubNumber,
+  FFTT_CLUB_NUMBER: 'P001',
 }
 
 test('POST /api/encounters/encounters-search returns JSON consistent with PostgreSQL data', async (t) => {
@@ -44,7 +42,7 @@ test('POST /api/encounters/encounters-search returns JSON consistent with Postgr
 
   assert.equal(response.statusCode, 200)
 
-  const expected = buildExpectedEncounterResponse(1, followedClubNumber)
+  const expected = buildExpectedEncounterResponse(1)
   const actual = response
     .json()
     .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))

@@ -303,8 +303,7 @@ const divisionsById = new Map(
 )
 
 export function buildExpectedEncounterResponse(
-  dayNumber?: number,
-  followedClubNumber?: string
+  dayNumber?: number
 ): components['schemas']['Encounter'][] {
   return demoSeedData.encounters
     .filter(
@@ -353,9 +352,6 @@ export function buildExpectedEncounterResponse(
           id: homeTeam.id,
           name: homeTeam.name,
           clubName: homeClub.name,
-          isMellinet:
-            followedClubNumber !== undefined &&
-            homeClub.numero === followedClubNumber,
           lineup: lineup
             .filter((entry) => entry.team_id === homeTeam.id)
             .map((entry) => {
@@ -376,9 +372,6 @@ export function buildExpectedEncounterResponse(
           id: awayTeam.id,
           name: awayTeam.name,
           clubName: awayClub.name,
-          isMellinet:
-            followedClubNumber !== undefined &&
-            awayClub.numero === followedClubNumber,
           lineup: lineup
             .filter((entry) => entry.team_id === awayTeam.id)
             .map((entry) => {

@@ -10,6 +10,8 @@ export const otherPoolId = '445566'
 
 const poolLink = `action=poule&auto=1&D1=${divisionId}&cx_poule=${poolId}`
 const otherPoolLink = `action=poule&auto=1&D1=${divisionId}&cx_poule=${otherPoolId}`
+/** A result link that names the division but not the pool, as the FFTT sometimes does. */
+export const divisionOnlyLink = `action=poule&auto=1&D1=${divisionId}`
 
 const detailsLink = (encounterId: string, home: string, away: string) =>
   `action=detail&auto=1&renc_id=${encounterId}&is_retour=0&phase=1&res_1=0&res_2=0` +

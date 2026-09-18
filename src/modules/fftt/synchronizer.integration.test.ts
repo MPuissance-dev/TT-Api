@@ -19,6 +19,7 @@ import { createFfttSynchronizer } from './synchronizer.js'
 import { createFakeFfttClient } from './testing/fake-client.js'
 import {
   buildScenario,
+  divisionOnlyLink,
   mainClubNumber,
   opponentClubNumber,
   poolId,
@@ -769,4 +770,39 @@ test('records the slot of every player on the result sheet', async () => {
   assert.equal(positionOf(idOf('L1')), 'A')
   assert.equal(positionOf(idOf('L3')), 'W')
   assert.equal(positionOf(idOf('L2')), 'B')
+})
+
+test('only the pools the club plays in have their ranking downloaded', async () => {
+  const fake = createFakeFfttClient(buildScenario())
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {})
+
+  await synchronizer.synchronizeClub({ clubNumber: mainClubNumber })
+
+  assert.equal(
+    fake.countCalls('listPoolRankings'),
+    1,
+    'the ranking of the pool the club is absent from is never requested'
+  )
+})
+
+test('every pool is inspected when the teams do not name theirs', async () => {
+  const scenario = buildScenario()
+  scenario.teamsByClub = {
+    [mainClubNumber]: (scenario.teamsByClub?.[mainClubNumber] ?? []).map(
+      (team) => ({ ...team, divisionLink: divisionOnlyLink })
+    ),
+  }
+
+  const fake = createFakeFfttClient(scenario)
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {})
+  const summary = await synchronizer.synchronizeClub({
+    clubNumber: mainClubNumber,
+  })
+
+  assert.equal(
+    fake.countCalls('listPoolRankings'),
+    2,
+    'the ranking is the only way left to find the pools of the club'
+  )
+  assert.equal(summary.pools, 1, 'the foreign pool is still left out')
 })

@@ -17,14 +17,11 @@ type TeamRow = SearchEncounterRow['homeTeam']
 
 const mapTeam = (
   team: TeamRow,
-  lineup: SearchEncounterRow['lineup'],
-  followedClubNumber?: string
+  lineup: SearchEncounterRow['lineup']
 ): ApiTeam => ({
   id: team.id,
   name: team.name,
   clubName: team.club.name,
-  isMellinet:
-    followedClubNumber !== undefined && team.club.numero === followedClubNumber,
   lineup: lineup
     .filter((entry) => entry.team_id === team.id)
     .map((entry) => ({
@@ -34,10 +31,7 @@ const mapTeam = (
     })),
 })
 
-export const mapEncounter = (
-  row: SearchEncounterRow,
-  followedClubNumber?: string
-): ApiEncounter => ({
+export const mapEncounter = (row: SearchEncounterRow): ApiEncounter => ({
   id: row.id,
   division: row.pool.division.name,
   pool: row.pool.name,
@@ -48,6 +42,6 @@ export const mapEncounter = (
   status: statusMap[row.status],
   homeScore: row.home_score,
   awayScore: row.away_score,
-  homeTeam: mapTeam(row.homeTeam, row.lineup, followedClubNumber),
-  awayTeam: mapTeam(row.awayTeam, row.lineup, followedClubNumber),
+  homeTeam: mapTeam(row.homeTeam, row.lineup),
+  awayTeam: mapTeam(row.awayTeam, row.lineup),
 })

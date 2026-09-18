@@ -30,7 +30,10 @@ export interface components {
       dayNumber?: number
       /** @description Saison au format 2025/2026. Par défaut, la saison en cours */
       season?: string
-      /** @description Phase du championnat */
+      /**
+       * @description Phase du championnat
+       * @enum {number}
+       */
       phase?: 1 | 2
     }
     Encounter: {
@@ -74,8 +77,6 @@ export interface components {
       name?: string
       /** @description Nom du club */
       clubName?: string
-      /** @description Est une équipe du club suivi ? */
-      isMellinet?: boolean
       lineup?: components['schemas']['Player'][]
     }
     Player: {
