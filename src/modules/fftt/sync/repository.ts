@@ -87,7 +87,11 @@ export const upsertDivision = async (
     .values(values)
     .onConflictDoUpdate({
       target: [divisions.ffttId, divisions.seasonId, divisions.phase],
-      set: { name: values.name, level: values.level },
+      set: {
+        name: values.name,
+        level: values.level,
+        category: values.category,
+      },
     })
     .returning({ id: divisions.id })
 

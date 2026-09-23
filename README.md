@@ -278,6 +278,79 @@ transaction : aucun verrou PostgreSQL n'est detenu pendant une attente reseau.
 Une rencontre et sa composition sont ecrites dans une seule transaction, de sorte
 qu'un incident ne laisse jamais un match "joue" sans sa composition.
 
+## Generation d'images
+
+Le module `src/modules/graphics/` transforme les rencontres en affiches prêtes a
+publier. Le rendu passe par Chromium (Playwright) : le template produit un
+document HTML autonome, le navigateur le capture a la taille exacte du format.
+
+```bash
+# A faire une fois apres l'installation des dependances
+npx playwright install chromium
+```
+
+### Endpoints
+
+| Methode | Route | Reponse |
+| --- | --- | --- |
+| `POST` | `/api/graphics/encounters-poster` | `image/png` |
+| `GET` | `/api/graphics/encounters-poster/preview` | `text/html` |
+
+Les deux acceptent les memes parametres (`dayNumber`, `season`, `phase`,
+`format`, `title`, `subtitle`), le premier dans le corps JSON, le second en query
+string. La preview renvoie exactement le HTML qui sera capture : c'est la façon
+la plus rapide d'iterer sur le design dans un vrai navigateur.
+
+```bash
+curl -X POST http://localhost:3000/api/graphics/encounters-poster \
+  -H 'content-type: application/json' \
+  -d '{"dayNumber": 3, "format": "instagram-portrait"}' \
+  --output affiche.png
+
+open 'http://localhost:3000/api/graphics/encounters-poster/preview?dayNumber=3&format=instagram-story'
+```
+
+### Formats disponibles
+
+| Nom | Dimensions | Rencontres affichees |
+| --- | --- | --- |
+| `instagram-square` | 1080x1080 | 3 |
+| `instagram-portrait` (defaut) | 1080x1350 | 5 |
+| `instagram-story` | 1080x1920 | 6 |
+| `facebook-square` | 1200x1200 | 3 |
+| `facebook-link` | 1200x630 | 2 (compact) |
+
+Chaque format a sa propre capacite plutot qu'un redimensionnement global : les
+rencontres au-dela sont resumees par un `+N autres` en pied d'affiche.
+
+Les capacites ne sont pas arbitraires : chaque ligne de texte est tronquee sur
+une seule ligne, donc une carte a toujours la meme hauteur quelles que soient les
+donnees. Le test `layout.integration.test.ts` remplit chaque format a sa capacite
+avec des noms de clubs volontairement demesures et verifie qu'aucun debordement
+n'est possible. Si tu changes la typographie ou les marges, ce test te dira
+immediatement quelles capacites reajuster.
+
+Le format `facebook-link` est marque `compact` : 630 px de haut ne permettent pas
+d'afficher les compositions d'equipe sans rogner, elles sont donc omises et les
+marges resserrees plutot que de reduire le texte sous le seuil de lisibilite.
+
+### Polices
+
+Un serveur Linux n'a aucune des polices d'un Mac. Depose tes fichiers
+`.woff2` dans `graphic/fonts/`, nommes `<Famille>-<graisse>.woff2` (par exemple
+`Barlow-700.woff2`) : ils sont inlines en base64 dans le document, donc le rendu
+est identique partout. Sans fichier, une pile systeme generique est utilisee.
+
+### Variables d'environnement
+
+| Variable | Role |
+| --- | --- |
+| `GRAPHICS_CLUB_NAME` | Nom du club mis en avant sur les affiches |
+| `GRAPHICS_CHROMIUM_NO_SANDBOX` | `true` pour ajouter `--no-sandbox`, souvent requis en conteneur |
+
+Chromium est lance une seule fois et partage par toutes les requetes, puis ferme
+avec le serveur via le hook `onClose`.
+
 ## Tests
 
 ```bash

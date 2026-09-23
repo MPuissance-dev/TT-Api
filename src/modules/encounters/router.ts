@@ -17,6 +17,10 @@ export const createEncountersRouter = (
               dayNumber: { type: 'number' },
               season: { type: 'string', pattern: String.raw`^\d{4}/\d{4}$` },
               phase: { type: 'number', enum: [1, 2] },
+              category: {
+                type: 'string',
+                enum: ['senior', 'youth', 'veteran'],
+              },
             },
           },
         },

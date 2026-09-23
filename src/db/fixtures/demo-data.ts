@@ -24,6 +24,7 @@ const ids = {
   divisions: {
     nationale: '00000000-0000-0000-0000-000000000011',
     regionale: '00000000-0000-0000-0000-000000000012',
+    jeunes: '00000000-0000-0000-0000-000000000013',
   },
   teams: {
     paris1: '00000000-0000-0000-0000-000000000021',
@@ -40,6 +41,7 @@ const ids = {
   pools: {
     a: '00000000-0000-0000-0000-000000000041',
     b: '00000000-0000-0000-0000-000000000042',
+    jeunes: '00000000-0000-0000-0000-000000000043',
   },
   rankings: {
     poolAParis1: '00000000-0000-0000-0000-000000000051',
@@ -50,6 +52,7 @@ const ids = {
   encounters: {
     nationaleDay1: '00000000-0000-0000-0000-000000000061',
     regionaleDay1: '00000000-0000-0000-0000-000000000062',
+    jeunesDay1: '00000000-0000-0000-0000-000000000063',
   },
   matches: {
     nationaleDay1Single: '00000000-0000-0000-0000-000000000071',
@@ -81,6 +84,7 @@ export const demoSeedData = {
       phase: 2,
       name: 'Nationale',
       level: 'Nationale',
+      category: 'senior' as const,
     },
     {
       id: ids.divisions.regionale,
@@ -88,6 +92,15 @@ export const demoSeedData = {
       phase: 2,
       name: 'Régionale',
       level: 'Régionale',
+      category: 'senior' as const,
+    },
+    {
+      id: ids.divisions.jeunes,
+      seasonId: ids.seasons.current,
+      phase: 2,
+      name: 'Départementale Jeunes',
+      level: 'Départementale',
+      category: 'youth' as const,
     },
   ] satisfies (typeof divisions.$inferInsert)[],
   teams: [
@@ -153,6 +166,11 @@ export const demoSeedData = {
   pools: [
     { id: ids.pools.a, name: 'Poule A', divisionId: ids.divisions.nationale },
     { id: ids.pools.b, name: 'Poule B', divisionId: ids.divisions.regionale },
+    {
+      id: ids.pools.jeunes,
+      name: 'Poule Jeunes',
+      divisionId: ids.divisions.jeunes,
+    },
   ] satisfies (typeof pools.$inferInsert)[],
   poolTeams: [
     { pool_id: ids.pools.a, team_id: ids.teams.paris1 },
@@ -226,6 +244,17 @@ export const demoSeedData = {
       played_at: new Date('2026-01-17T00:00:00.000Z'),
       home_score: 2,
       away_score: 2,
+      championship_day_number: 1,
+      status: 'played',
+    },
+    {
+      id: ids.encounters.jeunesDay1,
+      pool_id: ids.pools.jeunes,
+      home_team: ids.teams.paris1,
+      away_team: ids.teams.lyon1,
+      played_at: new Date('2026-01-24T00:00:00.000Z'),
+      home_score: 4,
+      away_score: 0,
       championship_day_number: 1,
       status: 'played',
     },
@@ -303,14 +332,21 @@ const divisionsById = new Map(
 )
 
 export function buildExpectedEncounterResponse(
-  dayNumber?: number
+  dayNumber?: number,
+  category: components['schemas']['DivisionCategory'] = 'senior'
 ): components['schemas']['Encounter'][] {
   return demoSeedData.encounters
-    .filter(
-      (encounter) =>
-        dayNumber === undefined ||
-        encounter.championship_day_number === dayNumber
-    )
+    .filter((encounter) => {
+      const pool = poolsById.get(encounter.pool_id)
+      const division =
+        pool === undefined ? undefined : divisionsById.get(pool.divisionId)
+
+      return (
+        division?.category === category &&
+        (dayNumber === undefined ||
+          encounter.championship_day_number === dayNumber)
+      )
+    })
     .map((encounter) => {
       const pool = poolsById.get(encounter.pool_id)
       const division =

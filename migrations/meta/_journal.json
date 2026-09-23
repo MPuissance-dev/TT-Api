@@ -92,6 +92,13 @@
       "when": 1787835272707,
       "tag": "0012_encounter_matches",
       "breakpoints": false
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790157424513,
+      "tag": "0013_simple_polaris",
+      "breakpoints": false
     }
   ]
 }

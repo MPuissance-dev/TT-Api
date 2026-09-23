@@ -10,6 +10,8 @@ tags:
     description: informations sur les joueurs
   - name: Encounters
     description: informations sur le championnat
+  - name: Graphics
+    description: génération d'images pour les réseaux sociaux
 
 paths:
   /encounters-search:
@@ -34,8 +36,118 @@ paths:
                 items:
                   $ref: '#/components/schemas/Encounter'           
 
+  /encounters-poster:
+    post:
+      tags:
+        - Graphics
+      summary: Génère une affiche des rencontres au format demandé
+      operationId: generateEncountersPoster
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EncountersPosterRequest'
+      responses:
+        '200':
+          description: Image générée
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+
+  /encounters-poster/preview:
+    get:
+      tags:
+        - Graphics
+      summary: Renvoie le HTML exact qui sera transformé en image, pour itérer sur le design
+      operationId: previewEncountersPoster
+      parameters:
+        - name: dayNumber
+          in: query
+          schema:
+            type: number
+        - name: season
+          in: query
+          schema:
+            type: string
+        - name: phase
+          in: query
+          schema:
+            type: number
+            enum: [1, 2]
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/DivisionCategory'
+        - name: format
+          in: query
+          schema:
+            $ref: '#/components/schemas/ImageFormat'
+        - name: title
+          in: query
+          schema:
+            type: string
+        - name: subtitle
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Document HTML de l'affiche
+          content:
+            text/html:
+              schema:
+                type: string
+
 components:
   schemas:
+    DivisionCategory:
+      description: Catégorie du championnat. Par défaut, senior
+      type: string
+      enum:
+        - senior
+        - youth
+        - veteran
+
+    ImageFormat:
+      description: Format de sortie de l'image
+      type: string
+      enum:
+        - instagram-square
+        - instagram-portrait
+        - instagram-story
+        - facebook-square
+        - facebook-link
+
+    EncountersPosterRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        dayNumber:
+          description: Journée de championnat
+          type: number
+        season:
+          description: Saison au format 2025/2026. Par défaut, la saison en cours
+          type: string
+        phase:
+          description: Phase du championnat
+          type: number
+          enum: [1, 2]
+        category:
+          $ref: '#/components/schemas/DivisionCategory'
+        format:
+          $ref: '#/components/schemas/ImageFormat'
+        title:
+          description: Remplace le titre calculé automatiquement
+          type: string
+          maxLength: 80
+        subtitle:
+          description: Remplace le sous-titre calculé automatiquement
+          type: string
+          maxLength: 120
+
     EncounterSearchRequest:
       type: object
       additionalProperties: false
@@ -50,6 +162,8 @@ components:
           description: Phase du championnat
           type: number
           enum: [1, 2]
+        category:
+          $ref: '#/components/schemas/DivisionCategory'
 
     Encounter:
       type: object

@@ -4,6 +4,7 @@ import {
   getGameWinner,
   lineupPosition,
   mapFfttClub,
+  mapFfttDivision,
   mapFfttPlayer,
   splitGameLabel,
 } from './mappers.js'
@@ -105,4 +106,29 @@ test('lineupPosition names the slots of each side', () => {
   assert.equal(lineupPosition('away', 0), 'W')
   assert.equal(lineupPosition('away', 3), 'Z')
   assert.equal(lineupPosition('home', 4), undefined)
+})
+
+test('mapFfttDivision carries the category of the championship', () => {
+  const input = {
+    ffttId: 'D1',
+    seasonId: 'season-1',
+    phase: 1 as const,
+  }
+
+  assert.equal(
+    mapFfttDivision({ ...input, label: 'Départementale 1 Phase 1' }).category,
+    'senior'
+  )
+  assert.equal(
+    mapFfttDivision({
+      ...input,
+      label: 'Départementale 1 Phase 1',
+      eventLabel: 'Championnat par Equipes Jeunes',
+    }).category,
+    'youth'
+  )
+  assert.equal(
+    mapFfttDivision({ ...input, label: 'Vétérans D2' }).category,
+    'veteran'
+  )
 })

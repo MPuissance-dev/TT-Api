@@ -11,11 +11,12 @@ export const createSearchEncountersHandler = (
   appServices: AppServices = services
 ) => {
   return async (request: SearchEncountersRequest, reply: FastifyReply) => {
-    const { dayNumber, season, phase } = request.body
+    const { dayNumber, season, phase, category } = request.body
     const rows = await appServices.encounters.searchEncounters({
       dayNumber,
       season,
       phase,
+      category,
     })
 
     return reply.send(rows.map((row) => mapEncounter(row)))

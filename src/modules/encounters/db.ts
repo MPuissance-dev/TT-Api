@@ -10,19 +10,25 @@ import {
   seasonNameFromDate,
   type ChampionshipPhase,
 } from '../seasons/season.js'
+import type { DivisionCategory } from '../divisions/division.js'
 
 export interface EncounterSearchCriteria {
   dayNumber?: number | undefined
   /** Defaults to the season the current date belongs to, so seasons never get mixed up. */
   season?: string | undefined
   phase?: ChampionshipPhase | undefined
+  /** Defaults to the senior championship, so youth and veteran ones never leak in. */
+  category?: DivisionCategory | undefined
 }
 
 export const buildSearchEncounters =
   (database: Database) =>
   async (criteria: EncounterSearchCriteria = {}) => {
     const season = criteria.season ?? seasonNameFromDate()
-    const poolFilters = [eq(seasons.name, season)]
+    const poolFilters = [
+      eq(seasons.name, season),
+      eq(divisions.category, criteria.category ?? 'senior'),
+    ]
     if (criteria.phase !== undefined) {
       poolFilters.push(eq(divisions.phase, criteria.phase))
     }

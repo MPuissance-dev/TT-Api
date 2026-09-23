@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseDivisionLabel } from './division.js'
+import { divisionCategoryOf, parseDivisionLabel } from './division.js'
 
 test('the phase suffix is removed from the division name', () => {
   assert.deepEqual(parseDivisionLabel('Départementale 1 Phase 1'), {
@@ -25,4 +25,27 @@ test('an unrecognized label falls back to its own name as level', () => {
     name: 'Coupe Davidson',
     level: 'Coupe Davidson',
   })
+})
+
+test('a championship without any age wording is a senior one', () => {
+  assert.equal(
+    divisionCategoryOf(
+      'Championnat par Equipes Masculin',
+      'Départementale 1 Phase 1'
+    ),
+    'senior'
+  )
+  assert.equal(divisionCategoryOf(undefined, 'Régionale 2'), 'senior')
+})
+
+test('the youth championships are recognized whatever their wording', () => {
+  assert.equal(divisionCategoryOf('Championnat Jeunes'), 'youth')
+  assert.equal(divisionCategoryOf(undefined, 'Départementale Cadets'), 'youth')
+  assert.equal(divisionCategoryOf('Critérium Minimes'), 'youth')
+  assert.equal(divisionCategoryOf('Championnat moins de 13 ans'), 'youth')
+})
+
+test('the veteran championships are recognized whatever their wording', () => {
+  assert.equal(divisionCategoryOf('Championnat Vétérans'), 'veteran')
+  assert.equal(divisionCategoryOf(undefined, 'Vétérans D1'), 'veteran')
 })

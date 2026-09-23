@@ -21,10 +21,76 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/encounters-poster': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Génère une affiche des rencontres au format demandé */
+    post: operations['generateEncountersPoster']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/encounters-poster/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Renvoie le HTML exact qui sera transformé en image, pour itérer sur le design */
+    get: operations['previewEncountersPoster']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /**
+     * @description Catégorie du championnat. Par défaut, senior
+     * @enum {string}
+     */
+    DivisionCategory: 'senior' | 'youth' | 'veteran'
+    /**
+     * @description Format de sortie de l'image
+     * @enum {string}
+     */
+    ImageFormat:
+      | 'instagram-square'
+      | 'instagram-portrait'
+      | 'instagram-story'
+      | 'facebook-square'
+      | 'facebook-link'
+    EncountersPosterRequest: {
+      /** @description Journée de championnat */
+      dayNumber?: number
+      /** @description Saison au format 2025/2026. Par défaut, la saison en cours */
+      season?: string
+      /**
+       * @description Phase du championnat
+       * @enum {number}
+       */
+      phase?: 1 | 2
+      category?: components['schemas']['DivisionCategory']
+      format?: components['schemas']['ImageFormat']
+      /** @description Remplace le titre calculé automatiquement */
+      title?: string
+      /** @description Remplace le sous-titre calculé automatiquement */
+      subtitle?: string
+    }
     EncounterSearchRequest: {
       /** @description Journée de championnat */
       dayNumber?: number
@@ -35,6 +101,7 @@ export interface components {
        * @enum {number}
        */
       phase?: 1 | 2
+      category?: components['schemas']['DivisionCategory']
     }
     Encounter: {
       /**
@@ -121,6 +188,58 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['Encounter'][]
+        }
+      }
+    }
+  }
+  generateEncountersPoster: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EncountersPosterRequest']
+      }
+    }
+    responses: {
+      /** @description Image générée */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'image/png': string
+        }
+      }
+    }
+  }
+  previewEncountersPoster: {
+    parameters: {
+      query?: {
+        dayNumber?: number
+        season?: string
+        phase?: 1 | 2
+        category?: components['schemas']['DivisionCategory']
+        format?: components['schemas']['ImageFormat']
+        title?: string
+        subtitle?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Document HTML de l'affiche */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'text/html': string
         }
       }
     }

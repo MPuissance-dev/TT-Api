@@ -267,9 +267,17 @@ const text = (node: XmlNode, field: string): string | undefined => {
 const requiredText = (node: XmlNode, field: string): string => {
   const value = text(node, field)
   if (value === undefined) {
-    throw new Error(`Missing FFTT response field: ${field}`)
+    throw new Error(
+      `Missing FFTT response field: ${field} for node ${JSON.stringify(node)}`
+    )
   }
 
+  return value
+}
+
+const requiredTeam = (node: XmlNode, field: string): string => {
+  let value = text(node, field)
+  value ??= 'Exempt'
   return value
 }
 
@@ -398,8 +406,8 @@ const extractChampionshipDayNumber = (
 
 const mapEncounter = (node: XmlNode): FfttEncounter => ({
   label: requiredText(node, 'libelle'),
-  homeTeamLabel: requiredText(node, 'equa'),
-  awayTeamLabel: requiredText(node, 'equb'),
+  homeTeamLabel: requiredTeam(node, 'equa'),
+  awayTeamLabel: requiredTeam(node, 'equb'),
   ...(numberValue(node, 'scorea') === undefined
     ? {}
     : { homeScore: numberValue(node, 'scorea') }),

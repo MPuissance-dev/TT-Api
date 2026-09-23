@@ -1,6 +1,19 @@
-import { integer, pgTable, unique, uuid, varchar } from 'drizzle-orm/pg-core'
+import {
+  integer,
+  pgEnum,
+  pgTable,
+  unique,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core'
 import { timestamps } from './timestamps.js'
 import { seasons } from './seasons.js'
+
+export const divisionCategory = pgEnum('division_category', [
+  'senior',
+  'youth',
+  'veteran',
+])
 
 export const divisions = pgTable(
   'divisions',
@@ -12,6 +25,8 @@ export const divisions = pgTable(
     /** Championship phase, 1 from September to December and 2 from January to May. */
     phase: integer('phase').notNull().default(1),
     name: varchar('name', { length: 50 }).notNull(),
+    /** Tells the senior championship apart from the youth and veteran ones. */
+    category: divisionCategory('category').notNull().default('senior'),
     ffttId: varchar('fftt_id', { length: 50 }),
     level: varchar('level', { length: 50 }).notNull(),
     ...timestamps,

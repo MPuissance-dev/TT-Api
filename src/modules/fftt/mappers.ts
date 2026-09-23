@@ -16,7 +16,10 @@ import type {
   teams,
 } from '../../db/schemas/index.js'
 import { collapseWhitespace, normalizeName } from '../../shared/text.js'
-import { parseDivisionLabel } from '../divisions/division.js'
+import {
+  parseDivisionLabel,
+  divisionCategoryOf,
+} from '../divisions/division.js'
 import { parseTeamLabel } from '../teams/team.js'
 import { seasonStartYear, type ChampionshipPhase } from '../seasons/season.js'
 import type {
@@ -58,6 +61,8 @@ export interface FfttDivisionInput {
   label: string
   seasonId: string
   phase: ChampionshipPhase
+  /** Wording of the FFTT event, the only place a youth or veteran championship names itself. */
+  eventLabel?: string | undefined
 }
 
 export const mapFfttDivision = (input: FfttDivisionInput): DivisionInsert => {
@@ -69,6 +74,7 @@ export const mapFfttDivision = (input: FfttDivisionInput): DivisionInsert => {
     phase: input.phase,
     name: parsed.name,
     level: parsed.level,
+    category: divisionCategoryOf(input.eventLabel, input.label),
   }
 }
 

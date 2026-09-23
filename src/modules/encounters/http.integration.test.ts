@@ -49,3 +49,38 @@ test('POST /api/encounters/encounters-search returns JSON consistent with Postgr
 
   assert.deepEqual(actual, expected)
 })
+
+test('POST /api/encounters/encounters-search only returns the senior championship unless another category is asked for', async (t) => {
+  const testDatabase = createTestDatabase()
+  await testDatabase.truncate()
+  await seedDatabase(testDatabase.database)
+
+  const app = await createServer({ logger: false, config: testConfig })
+
+  t.after(async () => {
+    await app.close()
+    await testDatabase.close()
+  })
+
+  const search = async (payload: Record<string, unknown>) => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/encounters/encounters-search',
+      payload,
+    })
+    assert.equal(response.statusCode, 200)
+
+    return response
+      .json()
+      .sort((a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id))
+  }
+
+  assert.deepEqual(
+    await search({ dayNumber: 1, season: '2025/2026' }),
+    buildExpectedEncounterResponse(1)
+  )
+  assert.deepEqual(
+    await search({ dayNumber: 1, season: '2025/2026', category: 'youth' }),
+    buildExpectedEncounterResponse(1, 'youth')
+  )
+})

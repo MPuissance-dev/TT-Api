@@ -1,6 +1,7 @@
 import { linkParameter } from '../client.js'
 import type { FfttTeam } from '../models.js'
 import { phaseFromDate, phaseFromLabel } from '../../seasons/season.js'
+import { divisionCategoryOf } from '../../divisions/division.js'
 import type { SynchronizationContext } from './context.js'
 import { upsertDivision } from './repository.js'
 import { synchronizePool, poolExternalIdOf } from './pools.js'
@@ -8,6 +9,8 @@ import { synchronizePool, poolExternalIdOf } from './pools.js'
 export interface DivisionSource {
   externalId: string
   label: string
+  /** Wording of the FFTT event, needed to tell senior, youth and veteran championships apart. */
+  eventLabel?: string | undefined
   /** Pools the club is known to play in, according to its own team listing. */
   poolExternalIds: Set<string>
 }
@@ -33,6 +36,7 @@ export const collectDivisions = (sourceTeams: FfttTeam[]): DivisionSource[] => {
     const division = divisions.get(externalId) ?? {
       externalId,
       label: team.divisionLabel ?? externalId,
+      ...(team.eventLabel === undefined ? {} : { eventLabel: team.eventLabel }),
       poolExternalIds: new Set<string>(),
     }
 
@@ -53,6 +57,7 @@ export const synchronizeDivision = async (
 ): Promise<void> => {
   const phase =
     context.forcedPhase ?? phaseFromLabel(division.label) ?? phaseFromDate()
+  const category = divisionCategoryOf(division.eventLabel, division.label)
 
   const localDivisionId = await context.database.transaction((transaction) =>
     upsertDivision(transaction, {
@@ -60,6 +65,7 @@ export const synchronizeDivision = async (
       label: division.label,
       seasonId: context.seasonId,
       phase,
+      eventLabel: division.eventLabel,
     })
   )
   context.summary.divisions += 1
@@ -79,6 +85,7 @@ export const synchronizeDivision = async (
     divisionId: division.externalId,
     divisionLabel: division.label,
     phase,
+    category,
     poolCount: sourcePools.length,
     relevantPoolCount: relevantPools.length,
   })
