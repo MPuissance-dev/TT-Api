@@ -33,6 +33,18 @@ export const createTestDatabase = (): TestDatabase => {
     )
   }
 
+  // The integration tests truncate every table: refuse anything that does not
+  // look like a dedicated test database, so a development base is never wiped.
+  const databaseName = decodeURIComponent(
+    new URL(connectionString).pathname.replace(/^\//, '')
+  )
+  if (!/test$/i.test(databaseName)) {
+    throw new Error(
+      `Refusing to run integration tests against "${databaseName}": ` +
+        'the database name must end with "test" (use npm run test:http:db)'
+    )
+  }
+
   const pool = new Pool({ connectionString })
   const database = drizzle({
     client: pool,

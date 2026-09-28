@@ -357,9 +357,12 @@ avec le serveur via le hook `onClose`.
 npm run test:http:db
 ```
 
-Cette commande prepare la base locale puis lance la suite complete. Les tests
-d'integration utilisent une vraie base PostgreSQL : ils tronquent les tables et
-reinjectent leurs propres donnees, ils s'executent donc en serie.
+Cette commande cree (si besoin) une base dediee `mellinet-DB-test` dans le
+conteneur local, y applique les migrations puis lance la suite complete. Les
+tests d'integration tronquent les tables et reinjectent leurs propres donnees,
+ils s'executent donc en serie et ne touchent jamais la base de dev
+`mellinet-DB` : ils refusent de tourner sur une base dont le nom ne se termine
+pas par `test`.
 
 Le synchronizer est teste via un faux client FFTT (`src/modules/fftt/testing/`)
 pilote par un scenario, ce qui permet de couvrir les cas de report, de

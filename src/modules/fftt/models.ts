@@ -151,17 +151,18 @@ export interface FfttEncounterDetails {
   games: FfttGame[]
 }
 
+/** A label is missing when a team played without a player in that slot. */
 export interface FfttEncounterPlayerPair {
-  homePlayerLabel: string
+  homePlayerLabel?: string | undefined
   homePlayerRanking?: string | undefined
-  awayPlayerLabel: string
+  awayPlayerLabel?: string | undefined
   awayPlayerRanking?: string | undefined
 }
 
 export interface FfttGame {
-  homePlayerLabel: string
+  homePlayerLabel?: string | undefined
   homeScore?: number | undefined
-  awayPlayerLabel: string
+  awayPlayerLabel?: string | undefined
   awayScore?: number | undefined
   setDetails?: string | undefined
 }

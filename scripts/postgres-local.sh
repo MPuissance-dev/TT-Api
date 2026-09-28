@@ -7,6 +7,7 @@ VOLUME_NAME="${PODMAN_POSTGRES_VOLUME:-tt-postgres-data}"
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-mellinet-DB}"
+POSTGRES_TEST_DB="${POSTGRES_TEST_DB:-mellinet-DB-test}"
 POSTGRES_PORT="${POSTGRES_PORT:-5433}"
 POSTGRES_IMAGE="${PODMAN_POSTGRES_IMAGE:-docker.io/library/postgres:16}"
 
@@ -15,7 +16,7 @@ database_url() {
     "$POSTGRES_USER" \
     "$POSTGRES_PASSWORD" \
     "$POSTGRES_PORT" \
-    "$POSTGRES_DB"
+    "${1:-$POSTGRES_DB}"
 }
 
 container_exists() {
@@ -68,6 +69,16 @@ up() {
 
   wait_until_ready
   echo "DATABASE_URL=$(database_url)"
+}
+
+# Cree la base de test a cote de la base de dev, pour que les tests ne la touchent jamais.
+ensure_test_database() {
+  up >/dev/null
+  if ! podman exec "$CONTAINER_NAME" psql -U "$POSTGRES_USER" -d postgres -tAc \
+    "SELECT 1 FROM pg_database WHERE datname = '$POSTGRES_TEST_DB'" | grep -q 1; then
+    podman exec "$CONTAINER_NAME" createdb -U "$POSTGRES_USER" "$POSTGRES_TEST_DB"
+    echo "Base de test $POSTGRES_TEST_DB creee."
+  fi
 }
 
 down() {
@@ -131,6 +142,15 @@ url() {
   echo "DATABASE_URL=$(database_url)"
 }
 
+test_url() {
+  if [ "${2:-}" = "--raw" ] || [ "${1:-}" = "--raw" ]; then
+    database_url "$POSTGRES_TEST_DB"
+    return
+  fi
+
+  echo "DATABASE_URL=$(database_url "$POSTGRES_TEST_DB")"
+}
+
 usage() {
   cat <<EOF
 Usage: bash scripts/postgres-local.sh <commande>
@@ -141,6 +161,8 @@ Commandes:
   status   Affiche le statut du conteneur
   logs     Suit les logs PostgreSQL
   url      Affiche la DATABASE_URL
+  test-up  Cree ou demarre la base de test ($POSTGRES_TEST_DB)
+  test-url Affiche la DATABASE_URL de la base de test
   reset    Recree completement la base locale
   destroy  Supprime le conteneur et son volume
 EOF
@@ -161,6 +183,12 @@ case "${1:-}" in
     ;;
   url)
     url "$@"
+    ;;
+  test-up)
+    ensure_test_database
+    ;;
+  test-url)
+    test_url "$@"
     ;;
   reset)
     reset

@@ -285,6 +285,8 @@ const numberValue = (node: XmlNode, field: string): number | undefined => {
   const value = text(node, field)
   if (value === undefined) {
     return undefined
+  } else if (value === "-") {
+    return 0
   }
 
   const parsed = Number(value)
@@ -840,21 +842,29 @@ export const createFfttClient = (config: FfttClientConfig) => {
           ? {}
           : { awayScore: numberValue(resultNode, 'resb') }),
         players: findNodes(result, 'joueur').map((node) => ({
-          homePlayerLabel: requiredText(node, 'xja'),
+          ...(text(node, 'xja') === undefined
+            ? {}
+            : { homePlayerLabel: text(node, 'xja') }),
           ...(text(node, 'xca') === undefined
             ? {}
             : { homePlayerRanking: text(node, 'xca') }),
-          awayPlayerLabel: requiredText(node, 'xjb'),
+          ...(text(node, 'xjb') === undefined
+            ? {}
+            : { awayPlayerLabel: text(node, 'xjb') }),
           ...(text(node, 'xcb') === undefined
             ? {}
             : { awayPlayerRanking: text(node, 'xcb') }),
         })),
         games: findNodes(result, 'partie').map((node) => ({
-          homePlayerLabel: requiredText(node, 'ja'),
+          ...(text(node, 'ja') === undefined
+            ? {}
+            : { homePlayerLabel: text(node, 'ja') }),
           ...(numberValue(node, 'scorea') === undefined
             ? {}
             : { homeScore: numberValue(node, 'scorea') }),
-          awayPlayerLabel: requiredText(node, 'jb'),
+          ...(text(node, 'jb') === undefined
+            ? {}
+            : { awayPlayerLabel: text(node, 'jb') }),
           ...(numberValue(node, 'scoreb') === undefined
             ? {}
             : { awayScore: numberValue(node, 'scoreb') }),

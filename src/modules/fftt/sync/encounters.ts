@@ -162,24 +162,49 @@ const resolveSides = (
   localPoolId: string,
   encounter: FfttEncounter
 ) => {
-  const resolve = (teamLabel: string, clubNumber: string | undefined) => {
+  const resolve = (
+    side: EncounterSide['label'],
+    teamLabel: string,
+    encounterClubNumber: string | undefined
+  ) => {
     const normalizedLabel = normalizeName(teamLabel)
     const poolKey = `${localPoolId}:${normalizedLabel}`
+    // The club number published on the encounter is unreliable: the FFTT omits
+    // it before the encounter is played, and once a club enters its results it
+    // may carry the number of the other club. The pool standings tie each team
+    // label to its club, so they are trusted first.
+    const standingsClubNumber = context.clubNumbersByPoolAndLabel.get(poolKey)
+    const clubNumber = standingsClubNumber ?? encounterClubNumber
+
+    if (
+      standingsClubNumber !== undefined &&
+      encounterClubNumber !== undefined &&
+      standingsClubNumber !== encounterClubNumber
+    ) {
+      context.log('FFTT encounter club number disagrees with the standings', {
+        encounter: encounter.label,
+        side,
+        teamLabel,
+        encounterClubNumber,
+        standingsClubNumber,
+      })
+    }
+
     return {
       teamId:
+        context.teamIdsByPoolAndLabel.get(poolKey) ??
         (clubNumber === undefined
           ? undefined
           : context.teamIdsByClubAndLabel.get(
               `${clubNumber}:${normalizedLabel}`
-            )) ?? context.teamIdsByPoolAndLabel.get(poolKey),
-      // The FFTT omits the club number on encounters that are not played yet.
-      clubNumber: clubNumber ?? context.clubNumbersByPoolAndLabel.get(poolKey),
+            )),
+      clubNumber,
     }
   }
 
   return {
-    home: resolve(encounter.homeTeamLabel, encounter.homeClubNumber),
-    away: resolve(encounter.awayTeamLabel, encounter.awayClubNumber),
+    home: resolve('home', encounter.homeTeamLabel, encounter.homeClubNumber),
+    away: resolve('away', encounter.awayTeamLabel, encounter.awayClubNumber),
   }
 }
 

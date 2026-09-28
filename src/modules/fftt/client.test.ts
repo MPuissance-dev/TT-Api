@@ -81,6 +81,46 @@ test('listPools extracts the pool identifier from the result link', async () => 
   }
 })
 
+test('getEncounterDetails accepts a result sheet with a missing player', async () => {
+  const originalFetch = globalThis.fetch
+
+  globalThis.fetch = async () =>
+    new Response(`
+      <liste>
+        <resultat><equa>Mellinet TT 1</equa><equb>St Herblain TT 2</equb></resultat>
+        <joueur><xja>MARTIN Alice</xja><xca>F 12</xca><xjb>DURAND Bob</xjb></joueur>
+        <joueur><xja>BERNARD Chloe</xja><xjb></xjb></joueur>
+        <partie><ja>BERNARD Chloe</ja><scorea>-</scorea><scoreb>-</scoreb></partie>
+      </liste>
+    `)
+
+  try {
+    const details = await createFfttClient({
+      applicationCode: 'A001',
+      password: 'password',
+      serie: 'ABCDEFGHIJKLMNO',
+    }).getEncounterDetails({
+      isReturn: '0',
+      phase: '1',
+      result1: '0',
+      result2: '0',
+      encounterId: '1',
+      team1: 'a',
+      team2: 'b',
+      teamId1: '1',
+      teamId2: '2',
+    })
+
+    assert.equal(details.players.length, 2)
+    assert.equal(details.players[0]?.awayPlayerLabel, 'DURAND Bob')
+    assert.equal(details.players[1]?.homePlayerLabel, 'BERNARD Chloe')
+    assert.equal(details.players[1]?.awayPlayerLabel, undefined)
+    assert.equal(details.games[0]?.awayPlayerLabel, undefined)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 const rosterResponse = () =>
   new Response(`
     <joueurs>
@@ -102,7 +142,7 @@ const testClient = (overrides: Record<string, unknown> = {}) =>
     serie: 'ABCDEFGHIJKLMNO',
     endpoint: 'https://example.test/players',
     retryDelayMs: 0,
-    sleep: async () => {},
+    sleep: async () => { /* empty */ },
     ...overrides,
   })
 
