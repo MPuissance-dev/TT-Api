@@ -130,6 +130,35 @@ interface FfttRequestParameters {
 
 type XmlNode = Record<string, unknown>
 
+/**
+ * The FFTT publishes its XML in ISO-8859-1, which `Response.text()` would
+ * decode as UTF-8, turning every accented letter into U+FFFD for good. The
+ * charset is read from the Content-Type header, then from the XML prolog.
+ */
+const decodeResponse = async (response: Response): Promise<string> => {
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  const fromHeader = /charset\s*=\s*"?([\w-]+)/i.exec(
+    response.headers.get('content-type') ?? ''
+  )?.[1]
+  const prolog = new TextDecoder('latin1').decode(bytes.subarray(0, 200))
+  const fromProlog = /^\s*<\?xml[^>]*encoding\s*=\s*["']([\w-]+)["']/i.exec(
+    prolog
+  )?.[1]
+
+  for (const charset of [fromHeader, fromProlog]) {
+    if (charset === undefined) {
+      continue
+    }
+    try {
+      return new TextDecoder(charset).decode(bytes)
+    } catch {
+      // Unknown charset label: try the next hint.
+    }
+  }
+
+  return new TextDecoder('utf-8').decode(bytes)
+}
+
 const parser = new XMLParser({
   ignoreAttributes: true,
   parseTagValue: false,
@@ -574,7 +603,7 @@ export const createFfttClient = (config: FfttClientConfig) => {
       )
     }
 
-    const parsed = parser.parse(await response.text())
+    const parsed = parser.parse(await decodeResponse(response))
     const errorMessage = findErrorMessage(parsed)
     if (errorMessage !== undefined) {
       throw new FfttApiError(`FFTT API returned an error: ${errorMessage}`)

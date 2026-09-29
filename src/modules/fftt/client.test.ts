@@ -81,6 +81,33 @@ test('listPools extracts the pool identifier from the result link', async () => 
   }
 })
 
+test('decodes the ISO-8859-1 responses of the FFTT', async () => {
+  const originalFetch = globalThis.fetch
+  const body = Buffer.from(
+    '<?xml version="1.0" encoding="ISO-8859-1"?><liste><joueur><licence>1</licence>' +
+      '<nom>LEFÈVRE</nom><prenom>Inès</prenom><club>44123456</club><nclub>Réze</nclub></joueur></liste>',
+    'latin1'
+  )
+
+  globalThis.fetch = async () =>
+    new Response(body, {
+      headers: { 'content-type': 'application/xml;charset=ISO-8859-1' },
+    })
+
+  try {
+    const players = await createFfttClient({
+      applicationCode: 'A001',
+      password: 'password',
+      serie: 'ABCDEFGHIJKLMNO',
+    }).listPlayersByClub('44123456')
+
+    assert.equal(players[0]?.firstName, 'Inès')
+    assert.equal(players[0]?.lastName, 'LEFÈVRE')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('getEncounterDetails accepts a result sheet with a missing player', async () => {
   const originalFetch = globalThis.fetch
 
