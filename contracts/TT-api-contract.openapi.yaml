@@ -10,11 +10,13 @@ tags:
     description: informations sur les joueurs
   - name: Encounters
     description: informations sur le championnat
+  - name: Teams
+    description: informations sur les équipes
   - name: Graphics
     description: génération d'images pour les réseaux sociaux
 
 paths:
-  /encounters-search:
+  /api/encounters/encounters-search:
     post:
       tags:
         - Encounters
@@ -36,7 +38,132 @@ paths:
                 items:
                   $ref: '#/components/schemas/Encounter'           
 
-  /encounters-poster:
+  /api/encounters/calendar:
+    get:
+      tags:
+        - Encounters
+      summary: Calendrier d'une phase, avec le week-end de chaque journée de championnat
+      operationId: getChampionshipCalendar
+      parameters:
+        - name: season
+          in: query
+          description: Saison au format 2025/2026. Par défaut, la saison en cours
+          schema:
+            type: string
+        - name: phase
+          in: query
+          description: Phase du championnat. Par défaut, la phase en cours
+          schema:
+            type: number
+            enum: [1, 2]
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/DivisionCategory'
+      responses:
+        '200':
+          description: Calendrier de la phase
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChampionshipCalendar'
+
+  /api/encounters/{encounterId}:
+    get:
+      tags:
+        - Encounters
+      summary: Détail d'une rencontre, avec les parties jouées quand la feuille de match est connue
+      operationId: getEncounter
+      parameters:
+        - name: encounterId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rencontre trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterDetails'
+        '404':
+          description: Rencontre inconnue
+
+  /api/teams/{teamId}:
+    get:
+      tags:
+        - Teams
+      summary: Détail d'une équipe sur une phase, avec son calendrier, le classement de sa poule et ses joueurs
+      operationId: getTeam
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: season
+          in: query
+          description: Saison au format 2025/2026. Par défaut, la saison en cours
+          schema:
+            type: string
+        - name: phase
+          in: query
+          description: Phase du championnat. Par défaut, la phase en cours
+          schema:
+            type: number
+            enum: [1, 2]
+        - name: category
+          in: query
+          schema:
+            $ref: '#/components/schemas/DivisionCategory'
+      responses:
+        '200':
+          description: Équipe trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDetails'
+        '404':
+          description: Équipe inconnue
+
+  /api/players/{playerId}:
+    get:
+      tags:
+        - Players
+      summary: Détail d'un joueur sur une phase, toutes catégories confondues, avec ses équipes, son bilan et ses parties rencontre par rencontre
+      operationId: getPlayer
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: season
+          in: query
+          description: Saison au format 2025/2026. Par défaut, la saison en cours
+          schema:
+            type: string
+        - name: phase
+          in: query
+          description: Phase du championnat. Par défaut, la phase en cours
+          schema:
+            type: number
+            enum: [1, 2]
+      responses:
+        '200':
+          description: Joueur trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerDetails'
+        '404':
+          description: Joueur inconnu
+
+  /api/graphics/encounters-poster:
     post:
       tags:
         - Graphics
@@ -57,7 +184,7 @@ paths:
                 type: string
                 format: binary
 
-  /encounters-poster/preview:
+  /api/graphics/encounters-poster/preview:
     get:
       tags:
         - Graphics
@@ -148,6 +275,45 @@ components:
           type: string
           maxLength: 120
 
+    ChampionshipCalendar:
+      type: object
+      required: [season, phase, category, days]
+      properties:
+        season:
+          description: Saison au format 2025/2026
+          type: string
+        phase:
+          type: number
+          enum: [1, 2]
+        category:
+          $ref: '#/components/schemas/DivisionCategory'
+        days:
+          description: Journées de la phase, par numéro croissant
+          type: array
+          items:
+            $ref: '#/components/schemas/ChampionshipDay'
+
+    ChampionshipDay:
+      type: object
+      required: [dayNumber, weekend]
+      properties:
+        dayNumber:
+          description: Journée de championnat
+          type: number
+        weekend:
+          description: Week-end où se joue la majorité des rencontres de la journée, hors rencontres reportées
+          type: object
+          required: [start, end]
+          properties:
+            start:
+              description: Samedi
+              type: string
+              format: date
+            end:
+              description: Dimanche
+              type: string
+              format: date
+
     EncounterSearchRequest:
       type: object
       additionalProperties: false
@@ -211,6 +377,336 @@ components:
           $ref: '#/components/schemas/Team'
           nullabe: true
         
+    EncounterDetails:
+      allOf:
+        - $ref: '#/components/schemas/Encounter'
+        - type: object
+          required: [matches]
+          properties:
+            matches:
+              description: Parties de la rencontre dans l'ordre de la feuille de match. Vide tant que la feuille n'est pas publiée
+              type: array
+              items:
+                $ref: '#/components/schemas/EncounterMatch'
+
+    EncounterMatch:
+      type: object
+      required:
+        [number, type, homePlayers, awayPlayers, homeScore, awayScore, winner, setDetails]
+      properties:
+        number:
+          description: Position de la partie sur la feuille de match, à partir de 1
+          type: number
+        type:
+          type: string
+          enum:
+            - SINGLE
+            - DOUBLE
+        homePlayers:
+          description: Joueurs de l'équipe à domicile. Vide pour un forfait ou un joueur inconnu
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        awayPlayers:
+          description: Joueurs de l'équipe à l'extérieur. Vide pour un forfait ou un joueur inconnu
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        homeScore:
+          description: Manches gagnées par l'équipe à domicile
+          type: number
+          nullable: true
+        awayScore:
+          description: Manches gagnées par l'équipe à l'extérieur
+          type: number
+          nullable: true
+        winner:
+          description: Vainqueur de la partie, null si elle n'a pas été jouée
+          type: string
+          enum:
+            - HOME
+            - AWAY
+          nullable: true
+        setDetails:
+          description: Détail des manches tel que publié par la FFTT, par exemple 11/9 8/11 11/5
+          type: string
+          nullable: true
+
+    TeamDetails:
+      type: object
+      required:
+        [id, name, clubName, season, phase, category, division, pool, ranking, calendar, players]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          description: Nom de l'équipe, par exemple Mellinet TT 3
+          type: string
+        clubName:
+          type: string
+        season:
+          description: Saison au format 2025/2026
+          type: string
+        phase:
+          type: number
+          enum: [1, 2]
+        category:
+          $ref: '#/components/schemas/DivisionCategory'
+        division:
+          description: Division de l'équipe sur la phase, null si elle n'y est pas engagée
+          nullable: true
+          type: object
+          required: [name, level, echelon]
+          properties:
+            name:
+              type: string
+            level:
+              description: Niveau, par exemple Régionale
+              type: string
+            echelon:
+              description: Échelon de l'organisateur de la division
+              type: string
+              enum: [national, zone, regional, departmental]
+              nullable: true
+        pool:
+          description: Poule de l'équipe, null si elle n'est pas engagée sur la phase
+          type: string
+          nullable: true
+        ranking:
+          description: Classement de toute la poule de l'équipe
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamRankingEntry'
+        calendar:
+          description: Rencontres de l'équipe, par journée
+          type: array
+          items:
+            $ref: '#/components/schemas/EncounterSummary'
+        players:
+          description: Joueurs alignés au moins une fois, du plus présent au moins présent
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamPlayer'
+
+    TeamSummary:
+      type: object
+      required: [id, name, clubName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        clubName:
+          type: string
+
+    TeamRankingEntry:
+      type: object
+      required:
+        [rank, team, points, played, wins, draws, losses, penalties, gamesWon, gamesLost]
+      properties:
+        rank:
+          type: number
+          nullable: true
+        team:
+          $ref: '#/components/schemas/TeamSummary'
+        points:
+          type: number
+          nullable: true
+        played:
+          type: number
+          nullable: true
+        wins:
+          type: number
+          nullable: true
+        draws:
+          type: number
+          nullable: true
+        losses:
+          type: number
+          nullable: true
+        penalties:
+          description: Points de pénalité
+          type: number
+          nullable: true
+        gamesWon:
+          description: Parties gagnées
+          type: number
+          nullable: true
+        gamesLost:
+          description: Parties perdues
+          type: number
+          nullable: true
+
+    EncounterSummary:
+      type: object
+      required:
+        [id, championshipDayNumber, played_at, status, homeTeam, awayTeam, homeScore, awayScore]
+      properties:
+        id:
+          type: string
+          format: uuid
+        championshipDayNumber:
+          type: number
+          nullable: true
+        played_at:
+          description: Date de la rencontre
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/EncounterStatus'
+        homeTeam:
+          $ref: '#/components/schemas/TeamSummary'
+        awayTeam:
+          $ref: '#/components/schemas/TeamSummary'
+        homeScore:
+          type: number
+          nullable: true
+        awayScore:
+          type: number
+          nullable: true
+
+    TeamPlayer:
+      type: object
+      required: [id, fullName, points, appearances]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        points:
+          description: Nombre de points du joueur
+          type: number
+        appearances:
+          description: Nombre de rencontres de la phase où le joueur a été aligné dans l'équipe
+          type: number
+
+    PlayerDetails:
+      type: object
+      required:
+        [id, firstName, lastName, fullName, points, clubName, season, phase, record, teams, encounters]
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        fullName:
+          type: string
+        points:
+          description: Nombre de points du joueur
+          type: number
+        clubName:
+          type: string
+        season:
+          description: Saison au format 2025/2026
+          type: string
+        phase:
+          type: number
+          enum: [1, 2]
+        record:
+          description: Bilan de la phase, hors parties non jouées
+          type: object
+          required: [encounters, singles, doubles]
+          properties:
+            encounters:
+              description: Nombre de rencontres jouées
+              type: number
+            singles:
+              $ref: '#/components/schemas/GameRecord'
+            doubles:
+              $ref: '#/components/schemas/GameRecord'
+        teams:
+          description: Équipes dans lesquelles le joueur a joué, de la plus fréquente à la moins fréquente
+          type: array
+          items:
+            type: object
+            required: [team, appearances]
+            properties:
+              team:
+                $ref: '#/components/schemas/TeamSummary'
+              appearances:
+                type: number
+        encounters:
+          description: Rencontres jouées, par journée
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerEncounter'
+
+    GameRecord:
+      type: object
+      required: [won, lost]
+      properties:
+        won:
+          type: number
+        lost:
+          type: number
+
+    PlayerEncounter:
+      type: object
+      required: [encounter, category, team, games]
+      properties:
+        encounter:
+          $ref: '#/components/schemas/EncounterSummary'
+        category:
+          description: Championnat de la rencontre, senior, jeunes ou vétérans
+          $ref: '#/components/schemas/DivisionCategory'
+        team:
+          description: Équipe du joueur lors de la rencontre
+          $ref: '#/components/schemas/TeamSummary'
+        games:
+          description: Parties du joueur, vide tant que la feuille de match n'est pas publiée
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerGame'
+
+    PlayerGame:
+      type: object
+      required:
+        [number, type, partner, opponents, result, scoreFor, scoreAgainst, setDetails]
+      properties:
+        number:
+          description: Position de la partie sur la feuille de match
+          type: number
+        type:
+          type: string
+          enum:
+            - SINGLE
+            - DOUBLE
+        partner:
+          description: Partenaire en double, null en simple ou s'il est inconnu
+          oneOf:
+            - $ref: '#/components/schemas/Player'
+            - type: 'null'
+        opponents:
+          description: Adversaires. Vide pour un forfait ou un joueur inconnu
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        result:
+          description: Résultat pour le joueur, null si la partie n'a pas été jouée
+          type: string
+          enum:
+            - WON
+            - LOST
+          nullable: true
+        scoreFor:
+          description: Manches gagnées par le joueur
+          type: number
+          nullable: true
+        scoreAgainst:
+          description: Manches gagnées par ses adversaires
+          type: number
+          nullable: true
+        setDetails:
+          description: Détail des manches du point de vue du joueur, par exemple 11/9 8/11 11/5
+          type: string
+          nullable: true
+
     Team: 
       type: object
       properties:

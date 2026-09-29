@@ -1,6 +1,11 @@
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import Fastify from 'fastify'
 import env from '@fastify/env'
+import fastifyStatic from '@fastify/static'
 import { createEncountersRouter } from './modules/encounters/router.js'
+import { createTeamsRouter } from './modules/teams/router.js'
+import { createPlayersRouter } from './modules/players/router.js'
 import { createFfttRouter } from './modules/fftt/router.js'
 import { createFfttClient } from './modules/fftt/client.js'
 import { createFfttSynchronizer } from './modules/fftt/index.js'
@@ -175,6 +180,16 @@ export const createServer = async ({
 
   await fastify.register(createEncountersRouter(configuredServices), {
     prefix: '/api/encounters',
+  })
+  await fastify.register(createTeamsRouter(configuredServices), {
+    prefix: '/api/teams',
+  })
+  await fastify.register(createPlayersRouter(configuredServices), {
+    prefix: '/api/players',
+  })
+  // The web interface is a plain static page talking to the API above.
+  await fastify.register(fastifyStatic, {
+    root: join(dirname(fileURLToPath(import.meta.url)), '..', 'web'),
   })
   await fastify.register(createFfttRouter(configuredServices), {
     prefix: '/api/fftt',

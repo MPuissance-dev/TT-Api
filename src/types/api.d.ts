@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-  '/encounters-search': {
+  '/api/encounters/encounters-search': {
     parameters: {
       query?: never
       header?: never
@@ -21,7 +21,75 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/encounters-poster': {
+  '/api/encounters/calendar': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Calendrier d'une phase, avec le week-end de chaque journée de championnat */
+    get: operations['getChampionshipCalendar']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/encounters/{encounterId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Détail d'une rencontre, avec les parties jouées quand la feuille de match est connue */
+    get: operations['getEncounter']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/teams/{teamId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Détail d'une équipe sur une phase, avec son calendrier, le classement de sa poule et ses joueurs */
+    get: operations['getTeam']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/players/{playerId}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Détail d'un joueur sur une phase, toutes catégories confondues, avec ses équipes, son bilan et ses parties rencontre par rencontre */
+    get: operations['getPlayer']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/graphics/encounters-poster': {
     parameters: {
       query?: never
       header?: never
@@ -38,7 +106,7 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/encounters-poster/preview': {
+  '/api/graphics/encounters-poster/preview': {
     parameters: {
       query?: never
       header?: never
@@ -91,6 +159,32 @@ export interface components {
       /** @description Remplace le sous-titre calculé automatiquement */
       subtitle?: string
     }
+    ChampionshipCalendar: {
+      /** @description Saison au format 2025/2026 */
+      season: string
+      /** @enum {number} */
+      phase: 1 | 2
+      category: components['schemas']['DivisionCategory']
+      /** @description Journées de la phase, par numéro croissant */
+      days: components['schemas']['ChampionshipDay'][]
+    }
+    ChampionshipDay: {
+      /** @description Journée de championnat */
+      dayNumber: number
+      /** @description Week-end où se joue la majorité des rencontres de la journée, hors rencontres reportées */
+      weekend: {
+        /**
+         * Format: date
+         * @description Samedi
+         */
+        start: string
+        /**
+         * Format: date
+         * @description Dimanche
+         */
+        end: string
+      }
+    }
     EncounterSearchRequest: {
       /** @description Journée de championnat */
       dayNumber?: number
@@ -133,6 +227,169 @@ export interface components {
       homeTeam?: components['schemas']['Team']
       /** @description Equipe à l'extérieur */
       awayTeam?: components['schemas']['Team']
+    }
+    EncounterDetails: components['schemas']['Encounter'] & {
+      /** @description Parties de la rencontre dans l'ordre de la feuille de match. Vide tant que la feuille n'est pas publiée */
+      matches: components['schemas']['EncounterMatch'][]
+    }
+    EncounterMatch: {
+      /** @description Position de la partie sur la feuille de match, à partir de 1 */
+      number: number
+      /** @enum {string} */
+      type: 'SINGLE' | 'DOUBLE'
+      /** @description Joueurs de l'équipe à domicile. Vide pour un forfait ou un joueur inconnu */
+      homePlayers: components['schemas']['Player'][]
+      /** @description Joueurs de l'équipe à l'extérieur. Vide pour un forfait ou un joueur inconnu */
+      awayPlayers: components['schemas']['Player'][]
+      /** @description Manches gagnées par l'équipe à domicile */
+      homeScore: number | null
+      /** @description Manches gagnées par l'équipe à l'extérieur */
+      awayScore: number | null
+      /**
+       * @description Vainqueur de la partie, null si elle n'a pas été jouée
+       * @enum {string|null}
+       */
+      winner: 'HOME' | 'AWAY' | null
+      /** @description Détail des manches tel que publié par la FFTT, par exemple 11/9 8/11 11/5 */
+      setDetails: string | null
+    }
+    TeamDetails: {
+      /** Format: uuid */
+      id: string
+      /** @description Nom de l'équipe, par exemple Mellinet TT 3 */
+      name: string
+      clubName: string
+      /** @description Saison au format 2025/2026 */
+      season: string
+      /** @enum {number} */
+      phase: 1 | 2
+      category: components['schemas']['DivisionCategory']
+      /** @description Division de l'équipe sur la phase, null si elle n'y est pas engagée */
+      division: {
+        name: string
+        /** @description Niveau, par exemple Régionale */
+        level: string
+        /**
+         * @description Échelon de l'organisateur de la division
+         * @enum {string|null}
+         */
+        echelon: 'national' | 'zone' | 'regional' | 'departmental' | null
+      } | null
+      /** @description Poule de l'équipe, null si elle n'est pas engagée sur la phase */
+      pool: string | null
+      /** @description Classement de toute la poule de l'équipe */
+      ranking: components['schemas']['TeamRankingEntry'][]
+      /** @description Rencontres de l'équipe, par journée */
+      calendar: components['schemas']['EncounterSummary'][]
+      /** @description Joueurs alignés au moins une fois, du plus présent au moins présent */
+      players: components['schemas']['TeamPlayer'][]
+    }
+    TeamSummary: {
+      /** Format: uuid */
+      id: string
+      name: string
+      clubName: string
+    }
+    TeamRankingEntry: {
+      rank: number | null
+      team: components['schemas']['TeamSummary']
+      points: number | null
+      played: number | null
+      wins: number | null
+      draws: number | null
+      losses: number | null
+      /** @description Points de pénalité */
+      penalties: number | null
+      /** @description Parties gagnées */
+      gamesWon: number | null
+      /** @description Parties perdues */
+      gamesLost: number | null
+    }
+    EncounterSummary: {
+      /** Format: uuid */
+      id: string
+      championshipDayNumber: number | null
+      /**
+       * Format: date-time
+       * @description Date de la rencontre
+       */
+      played_at: string
+      status: components['schemas']['EncounterStatus']
+      homeTeam: components['schemas']['TeamSummary']
+      awayTeam: components['schemas']['TeamSummary']
+      homeScore: number | null
+      awayScore: number | null
+    }
+    TeamPlayer: {
+      /** Format: uuid */
+      id: string
+      fullName: string
+      /** @description Nombre de points du joueur */
+      points: number
+      /** @description Nombre de rencontres de la phase où le joueur a été aligné dans l'équipe */
+      appearances: number
+    }
+    PlayerDetails: {
+      /** Format: uuid */
+      id: string
+      firstName: string
+      lastName: string
+      fullName: string
+      /** @description Nombre de points du joueur */
+      points: number
+      clubName: string
+      /** @description Saison au format 2025/2026 */
+      season: string
+      /** @enum {number} */
+      phase: 1 | 2
+      /** @description Bilan de la phase, hors parties non jouées */
+      record: {
+        /** @description Nombre de rencontres jouées */
+        encounters: number
+        singles: components['schemas']['GameRecord']
+        doubles: components['schemas']['GameRecord']
+      }
+      /** @description Équipes dans lesquelles le joueur a joué, de la plus fréquente à la moins fréquente */
+      teams: {
+        team: components['schemas']['TeamSummary']
+        appearances: number
+      }[]
+      /** @description Rencontres jouées, par journée */
+      encounters: components['schemas']['PlayerEncounter'][]
+    }
+    GameRecord: {
+      won: number
+      lost: number
+    }
+    PlayerEncounter: {
+      encounter: components['schemas']['EncounterSummary']
+      /** @description Championnat de la rencontre, senior, jeunes ou vétérans */
+      category: components['schemas']['DivisionCategory']
+      /** @description Équipe du joueur lors de la rencontre */
+      team: components['schemas']['TeamSummary']
+      /** @description Parties du joueur, vide tant que la feuille de match n'est pas publiée */
+      games: components['schemas']['PlayerGame'][]
+    }
+    PlayerGame: {
+      /** @description Position de la partie sur la feuille de match */
+      number: number
+      /** @enum {string} */
+      type: 'SINGLE' | 'DOUBLE'
+      /** @description Partenaire en double, null en simple ou s'il est inconnu */
+      partner: components['schemas']['Player'] | null
+      /** @description Adversaires. Vide pour un forfait ou un joueur inconnu */
+      opponents: components['schemas']['Player'][]
+      /**
+       * @description Résultat pour le joueur, null si la partie n'a pas été jouée
+       * @enum {string|null}
+       */
+      result: 'WON' | 'LOST' | null
+      /** @description Manches gagnées par le joueur */
+      scoreFor: number | null
+      /** @description Manches gagnées par ses adversaires */
+      scoreAgainst: number | null
+      /** @description Détail des manches du point de vue du joueur, par exemple 11/9 8/11 11/5 */
+      setDetails: string | null
     }
     Team: {
       /**
@@ -189,6 +446,130 @@ export interface operations {
         content: {
           'application/json': components['schemas']['Encounter'][]
         }
+      }
+    }
+  }
+  getChampionshipCalendar: {
+    parameters: {
+      query?: {
+        /** @description Saison au format 2025/2026. Par défaut, la saison en cours */
+        season?: string
+        /** @description Phase du championnat. Par défaut, la phase en cours */
+        phase?: 1 | 2
+        category?: components['schemas']['DivisionCategory']
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Calendrier de la phase */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ChampionshipCalendar']
+        }
+      }
+    }
+  }
+  getEncounter: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        encounterId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Rencontre trouvée */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['EncounterDetails']
+        }
+      }
+      /** @description Rencontre inconnue */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
+  getTeam: {
+    parameters: {
+      query?: {
+        /** @description Saison au format 2025/2026. Par défaut, la saison en cours */
+        season?: string
+        /** @description Phase du championnat. Par défaut, la phase en cours */
+        phase?: 1 | 2
+        category?: components['schemas']['DivisionCategory']
+      }
+      header?: never
+      path: {
+        teamId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Équipe trouvée */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TeamDetails']
+        }
+      }
+      /** @description Équipe inconnue */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+    }
+  }
+  getPlayer: {
+    parameters: {
+      query?: {
+        /** @description Saison au format 2025/2026. Par défaut, la saison en cours */
+        season?: string
+        /** @description Phase du championnat. Par défaut, la phase en cours */
+        phase?: 1 | 2
+      }
+      header?: never
+      path: {
+        playerId: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Joueur trouvé */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PlayerDetails']
+        }
+      }
+      /** @description Joueur inconnu */
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
       }
     }
   }
