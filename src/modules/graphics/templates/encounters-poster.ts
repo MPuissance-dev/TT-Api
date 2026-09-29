@@ -1,6 +1,7 @@
-import type { ImageFormat } from '../formats.js'
+import type { ImageFormat, PosterDensity } from '../formats.js'
 import { loadEmbeddedFonts, type EmbeddedFonts } from '../fonts.js'
 import type { PosterEncounter, PosterTeam } from '../view-model.js'
+import { hasKnownTime } from '../../divisions/schedule.js'
 
 export interface EncountersPosterInput {
   readonly encounters: PosterEncounter[]
@@ -9,8 +10,10 @@ export interface EncountersPosterInput {
   readonly title?: string | undefined
   /** Defaults to the season and phase of the first encounter. */
   readonly subtitle?: string | undefined
-  /** Club whose teams are visually emphasised. */
+  /** Club name displayed in the footer. */
   readonly highlightedClubName?: string | undefined
+  /** FFTT number of the club whose teams and wins are emphasised. */
+  readonly highlightedClubNumber?: string | undefined
   readonly fonts?: EmbeddedFonts | undefined
 }
 
@@ -25,25 +28,33 @@ const htmlEscapes: Record<string, string> = {
 export const escapeHtml = (value: string): string =>
   value.replaceAll(/[&<>"']/g, (character) => htmlEscapes[character]!)
 
+/**
+ * Encounter dates are Paris wall-clock times stored on the UTC calendar, so
+ * they are formatted in UTC: converting them to Paris would shift the time.
+ */
 const dateFormatter = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
-  timeZone: 'Europe/Paris',
+  timeZone: 'UTC',
 })
 
-const timeFormatter = new Intl.DateTimeFormat('fr-FR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Europe/Paris',
-})
+const formatTime = (date: Date): string => {
+  const hours = String(date.getUTCHours())
+  const minutes = date.getUTCMinutes()
+  return minutes === 0
+    ? `${hours}h`
+    : `${hours}h${String(minutes).padStart(2, '0')}`
+}
 
 const formatPlayedAt = (playedAt: string): string => {
   const date = new Date(playedAt)
   if (Number.isNaN(date.getTime())) {
     return ''
   }
-  return `${dateFormatter.format(date)} · ${timeFormatter.format(date)}`
+  const day = dateFormatter.format(date)
+  // Midnight means the FFTT gave no time and no default applies to the level.
+  return hasKnownTime(date) ? `${day} · ${formatTime(date)}` : day
 }
 
 const formatScore = (encounter: PosterEncounter): string =>
@@ -71,44 +82,80 @@ const defaultSubtitle = (encounters: PosterEncounter[]): string => {
     : `Saison ${first.season} · Phase ${String(first.phase)}`
 }
 
+const isClubTeam = (
+  team: PosterTeam,
+  highlightedClubNumber: string | undefined
+): boolean =>
+  highlightedClubNumber !== undefined &&
+  team.clubNumber === highlightedClubNumber
+
+export const isHighlightedClubWin = (
+  encounter: PosterEncounter,
+  highlightedClubNumber: string | undefined
+): boolean => {
+  if (
+    encounter.status !== 'PLAYED' ||
+    encounter.homeScore === null ||
+    encounter.awayScore === null
+  ) {
+    return false
+  }
+  const home = isClubTeam(encounter.homeTeam, highlightedClubNumber)
+  const away = isClubTeam(encounter.awayTeam, highlightedClubNumber)
+  if (home === away) {
+    return false
+  }
+  return home
+    ? encounter.homeScore > encounter.awayScore
+    : encounter.awayScore > encounter.homeScore
+}
+
 const renderTeam = (
   team: PosterTeam,
   alignment: 'left' | 'right',
-  highlightedClubName: string | undefined,
-  compact: boolean
+  highlightedClubNumber: string | undefined,
+  density: PosterDensity
 ): string => {
-  const highlighted =
-    highlightedClubName !== undefined && team.clubName === highlightedClubName
-  const lineup = compact
-    ? ''
-    : team.lineup.map((player) => escapeHtml(player.fullName)).join(' · ')
+  const highlighted = isClubTeam(team, highlightedClubNumber)
+  const lineup =
+    density === 'regular'
+      ? team.lineup.map((player) => escapeHtml(player.fullName)).join(' · ')
+      : ''
+  const club =
+    density === 'dense'
+      ? ''
+      : `<div class="team-club">${escapeHtml(team.clubName)}</div>`
 
   return `<div class="team ${alignment}${highlighted ? ' highlight' : ''}">
       <div class="team-name">${escapeHtml(team.name)}</div>
-      <div class="team-club">${escapeHtml(team.clubName)}</div>
+      ${club}
       ${lineup === '' ? '' : `<div class="lineup">${lineup}</div>`}
     </div>`
 }
 
 const renderEncounter = (
   encounter: PosterEncounter,
-  highlightedClubName: string | undefined,
-  compact: boolean
-): string =>
-  `<article class="card">
+  highlightedClubNumber: string | undefined,
+  density: PosterDensity
+): string => {
+  const win = isHighlightedClubWin(encounter, highlightedClubNumber)
+  const status = win ? 'Victoire' : statusLabels[encounter.status]
+
+  return `<article class="card${win ? ' win' : ''}">
     <div class="card-meta">
       <span>${escapeHtml(encounter.division)} · ${escapeHtml(encounter.pool)}</span>
       <span>${escapeHtml(formatPlayedAt(encounter.playedAt))}</span>
     </div>
     <div class="card-body">
-      ${renderTeam(encounter.homeTeam, 'left', highlightedClubName, compact)}
+      ${renderTeam(encounter.homeTeam, 'left', highlightedClubNumber, density)}
       <div class="score-block">
         <div class="score">${escapeHtml(formatScore(encounter))}</div>
-        <div class="status">${escapeHtml(statusLabels[encounter.status])}</div>
+        <div class="status">${escapeHtml(status)}</div>
       </div>
-      ${renderTeam(encounter.awayTeam, 'right', highlightedClubName, compact)}
+      ${renderTeam(encounter.awayTeam, 'right', highlightedClubNumber, density)}
     </div>
   </article>`
+}
 
 const renderEmptyState = (): string =>
   `<div class="empty">Aucune rencontre à afficher</div>`
@@ -133,9 +180,15 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
     body {
       --scale: ${scale};
       --unit: calc(var(--scale) * 1px);
+      /* Club colours: black, white and blue RGB(70, 144, 180). */
+      --club-blue: #4690b4;
+      --club-blue-dark: #2c6482;
+      --text: #ffffff;
+      --text-muted: #a3a3a3;
+      --text-soft: #d4d4d4;
       font-family: ${fonts.fontFamily};
-      color: #f8fafc;
-      background: linear-gradient(160deg, #0f172a 0%, #1e293b 55%, #0f172a 100%);
+      color: var(--text);
+      background: linear-gradient(160deg, #000000 0%, #141414 55%, #000000 100%);
       -webkit-font-smoothing: antialiased;
     }
     .poster {
@@ -153,11 +206,11 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
       line-height: 1.05;
       letter-spacing: calc(-1 * var(--unit));
     }
-    .subtitle { font-size: calc(26 * var(--unit)); color: #94a3b8; }
+    .subtitle { font-size: calc(26 * var(--unit)); color: var(--text-muted); }
     .accent {
       width: calc(96 * var(--unit));
       height: calc(6 * var(--unit));
-      background: #f59e0b;
+      background: var(--club-blue);
       border-radius: 999px;
       margin-top: calc(12 * var(--unit));
     }
@@ -172,8 +225,8 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
       overflow: hidden;
     }
     .card {
-      background: rgba(255, 255, 255, 0.06);
-      border: calc(1 * var(--unit)) solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.07);
+      border: calc(1 * var(--unit)) solid rgba(255, 255, 255, 0.12);
       border-radius: calc(24 * var(--unit));
       padding: calc(24 * var(--unit)) calc(28 * var(--unit));
       display: flex;
@@ -187,7 +240,7 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
       justify-content: space-between;
       gap: calc(16 * var(--unit));
       font-size: calc(20 * var(--unit));
-      color: #94a3b8;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: calc(0.5 * var(--unit));
     }
@@ -218,12 +271,12 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
       font-weight: 800;
       line-height: 1.15;
     }
-    .team-club { font-size: calc(22 * var(--unit)); color: #cbd5e1; }
-    .team.highlight .team-name { color: #f59e0b; }
+    .team-club { font-size: calc(22 * var(--unit)); color: var(--text-soft); }
+    .team.highlight .team-name { color: var(--club-blue); }
     .lineup {
       margin-top: calc(6 * var(--unit));
       font-size: calc(18 * var(--unit));
-      color: #94a3b8;
+      color: var(--text-muted);
       line-height: 1.3;
     }
     .score-block { text-align: center; }
@@ -234,22 +287,38 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
     }
     .status {
       font-size: calc(17 * var(--unit));
-      color: #94a3b8;
+      color: var(--text-muted);
       text-transform: uppercase;
     }
+.card.win {
+      background: linear-gradient(
+        135deg,
+        var(--club-blue) 0%,
+        var(--club-blue-dark) 100%
+      );
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 0 calc(24 * var(--unit)) rgba(70, 144, 180, 0.35);
+    }
+    /* On the blue card, the club's own blue would vanish: everything is white. */
+    .card.win .card-meta,
+    .card.win .team-club,
+    .card.win .lineup { color: rgba(255, 255, 255, 0.8); }
+    .card.win .team.highlight .team-name,
+    .card.win .score { color: var(--text); }
+    .card.win .status { color: var(--text); font-weight: 800; }
     .empty {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: calc(32 * var(--unit));
-      color: #94a3b8;
+      color: var(--text-muted);
     }
     .footer {
       display: flex;
       justify-content: space-between;
       font-size: calc(20 * var(--unit));
-      color: #64748b;
+      color: #737373;
     }
     body.compact .poster { padding: calc(40 * var(--unit)); gap: calc(22 * var(--unit)); }
     body.compact .title { font-size: calc(52 * var(--unit)); }
@@ -257,14 +326,31 @@ const renderStyles = (format: ImageFormat, fonts: EmbeddedFonts): string => {
     body.compact .card {
       padding: calc(18 * var(--unit)) calc(24 * var(--unit));
       gap: calc(10 * var(--unit));
-    }`
+    }
+    body.dense .poster { padding: calc(44 * var(--unit)); gap: calc(20 * var(--unit)); }
+    body.dense .header { gap: calc(4 * var(--unit)); }
+    body.dense .title { font-size: calc(52 * var(--unit)); }
+    body.dense .subtitle { font-size: calc(22 * var(--unit)); }
+    body.dense .accent { margin-top: calc(6 * var(--unit)); }
+    body.dense .cards { gap: calc(10 * var(--unit)); }
+    body.dense .card {
+      padding: calc(12 * var(--unit)) calc(24 * var(--unit));
+      gap: calc(4 * var(--unit));
+      border-radius: calc(18 * var(--unit));
+    }
+    body.dense .card-meta { font-size: calc(17 * var(--unit)); }
+    body.dense .team-name { font-size: calc(30 * var(--unit)); }
+    body.dense .score { font-size: calc(38 * var(--unit)); line-height: 1.1; }
+    body.dense .status { font-size: calc(13 * var(--unit)); line-height: 1.2; }
+    body.dense .footer { font-size: calc(18 * var(--unit)); }`
 }
 
 /** Builds the standalone HTML document rendered by the headless browser. */
 export const renderEncountersPoster = (
   input: EncountersPosterInput
 ): string => {
-  const { encounters, format, highlightedClubName } = input
+  const { encounters, format, highlightedClubName, highlightedClubNumber } =
+    input
   const fonts = input.fonts ?? loadEmbeddedFonts()
   const visible = encounters.slice(0, format.maxEncounters)
   const hiddenCount = encounters.length - visible.length
@@ -277,7 +363,7 @@ export const renderEncountersPoster = (
       ? renderEmptyState()
       : visible
           .map((encounter) =>
-            renderEncounter(encounter, highlightedClubName, format.compact)
+            renderEncounter(encounter, highlightedClubNumber, format.density)
           )
           .join('')
 
@@ -287,7 +373,7 @@ export const renderEncountersPoster = (
 <meta charset="utf-8">
 <style>${renderStyles(format, fonts)}</style>
 </head>
-<body class="${format.compact ? 'compact' : ''}">
+<body class="${format.density}">
 <div class="poster">
   <header class="header">
     <div class="title">${escapeHtml(title)}</div>

@@ -15,6 +15,13 @@ export const divisionCategory = pgEnum('division_category', [
   'veteran',
 ])
 
+export const divisionEchelon = pgEnum('division_echelon', [
+  'national',
+  'zone',
+  'regional',
+  'departmental',
+])
+
 export const divisions = pgTable(
   'divisions',
   {
@@ -29,6 +36,8 @@ export const divisions = pgTable(
     category: divisionCategory('category').notNull().default('senior'),
     ffttId: varchar('fftt_id', { length: 50 }),
     level: varchar('level', { length: 50 }).notNull(),
+    /** Body organizing the division, unknown when its label names none. */
+    echelon: divisionEchelon('echelon'),
     ...timestamps,
   },
   (table) => [

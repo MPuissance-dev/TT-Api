@@ -74,6 +74,7 @@ export const mapFfttDivision = (input: FfttDivisionInput): DivisionInsert => {
     phase: input.phase,
     name: parsed.name,
     level: parsed.level,
+    echelon: parsed.echelon ?? null,
     category: divisionCategoryOf(input.eventLabel, input.label),
   }
 }

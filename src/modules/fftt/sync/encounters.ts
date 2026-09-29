@@ -2,6 +2,10 @@ import { mapWithConcurrency } from '../../../shared/concurrency.js'
 import { normalizeName } from '../../../shared/text.js'
 import { linkParameter } from '../client.js'
 import { parseFfttDate } from '../mappers.js'
+import {
+  withDefaultStartTime,
+  type StartTime,
+} from '../../divisions/schedule.js'
 import type { FfttEncounter } from '../models.js'
 import type { SynchronizationContext } from './context.js'
 import { resolveEncounterSheet, type ResolvedSheet } from './sheet.js'
@@ -15,6 +19,8 @@ export interface PoolLocation {
   divisionExternalId: string
   poolExternalId: string
   localPoolId: string
+  /** Applied when the FFTT publishes the day of an encounter without its time. */
+  defaultStartTime?: StartTime | undefined
 }
 
 export interface EncounterSide {
@@ -87,8 +93,10 @@ const prepareEncounter = async (
     return undefined
   }
 
-  const playedAt = parseFfttDate(encounter.actualDate ?? encounter.plannedDate)
-  if (playedAt === undefined) {
+  const publishedAt = parseFfttDate(
+    encounter.actualDate ?? encounter.plannedDate
+  )
+  if (publishedAt === undefined) {
     context.summary.skippedEncounters += 1
     context.summary.skippedEncounterReasons.missingDate += 1
     context.log('FFTT encounter skipped, unusable date', {
@@ -98,6 +106,8 @@ const prepareEncounter = async (
     })
     return undefined
   }
+
+  const playedAt = withDefaultStartTime(publishedAt, pool.defaultStartTime)
 
   const home = {
     label: 'home' as const,

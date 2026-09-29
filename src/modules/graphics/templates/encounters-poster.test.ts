@@ -3,9 +3,15 @@ import test from 'node:test'
 import { imageFormats } from '../formats.js'
 import { fallbackFontStack } from '../fonts.js'
 import type { PosterEncounter } from '../view-model.js'
-import { escapeHtml, renderEncountersPoster } from './encounters-poster.js'
+import {
+  escapeHtml,
+  isHighlightedClubWin,
+  renderEncountersPoster,
+} from './encounters-poster.js'
 
 const noFonts = { css: '', fontFamily: fallbackFontStack }
+
+const clubNumber = '12440004'
 
 const encounter = (
   overrides: Partial<PosterEncounter> = {}
@@ -21,12 +27,14 @@ const encounter = (
   awayScore: 8,
   homeTeam: {
     name: 'Mellinet 1',
-    clubName: 'Stade Nantais',
+    clubName: 'Mellinet TT',
+    clubNumber: clubNumber,
     lineup: [{ fullName: 'Jean Dupont', points: 1200 }],
   },
   awayTeam: {
     name: 'Rezé 2',
     clubName: 'TT Rezé',
+    clubNumber: '12440099',
     lineup: [],
   },
   ...overrides,
@@ -52,6 +60,7 @@ test('a team name containing markup cannot inject html', () => {
       homeTeam: {
         name: '<script>alert(1)</script>',
         clubName: 'Club',
+        clubNumber: '1',
         lineup: [],
       },
     }),
@@ -106,9 +115,121 @@ test('the followed club is flagged so the layout can emphasise it', () => {
     encounters: [encounter()],
     format: imageFormats['instagram-portrait'],
     fonts: noFonts,
-    highlightedClubName: 'Stade Nantais',
+    highlightedClubNumber: clubNumber,
   })
 
   assert.ok(html.includes('class="team left highlight"'))
   assert.ok(!html.includes('class="team right highlight"'))
+})
+
+test('a win of the followed club is celebrated', () => {
+  const html = renderEncountersPoster({
+    encounters: [encounter()],
+    format: imageFormats['instagram-portrait'],
+    fonts: noFonts,
+    highlightedClubNumber: clubNumber,
+  })
+
+  assert.ok(html.includes('class="card win"'))
+  assert.ok(html.includes('Victoire'))
+  assert.ok(!html.includes('Terminé'))
+})
+
+test('only a strict win of the followed club counts', () => {
+  const club = clubNumber
+
+  assert.ok(isHighlightedClubWin(encounter(), club))
+  // Away win of the club.
+  assert.ok(
+    isHighlightedClubWin(
+      encounter({
+        homeScore: 8,
+        awayScore: 12,
+        homeTeam: {
+          name: 'Rezé 2',
+          clubName: 'TT Rezé',
+          clubNumber: '12440099',
+          lineup: [],
+        },
+        awayTeam: {
+          name: 'Mellinet 1',
+          clubName: 'Mellinet TT',
+          clubNumber: club,
+          lineup: [],
+        },
+      }),
+      club
+    )
+  )
+  assert.ok(
+    !isHighlightedClubWin(encounter({ homeScore: 8, awayScore: 12 }), club)
+  )
+  assert.ok(
+    !isHighlightedClubWin(encounter({ homeScore: 10, awayScore: 10 }), club)
+  )
+  assert.ok(
+    !isHighlightedClubWin(
+      encounter({ status: 'SCHEDULED', homeScore: null, awayScore: null }),
+      club
+    )
+  )
+  assert.ok(!isHighlightedClubWin(encounter(), undefined))
+  // Derby: both teams belong to the club.
+  assert.ok(
+    !isHighlightedClubWin(
+      encounter({
+        awayTeam: {
+          name: 'Mellinet 2',
+          clubName: 'Mellinet TT',
+          clubNumber: club,
+          lineup: [],
+        },
+      }),
+      club
+    )
+  )
+})
+
+test('a loss of the followed club keeps the regular card', () => {
+  const html = renderEncountersPoster({
+    encounters: [encounter({ homeScore: 8, awayScore: 12 })],
+    format: imageFormats['instagram-portrait'],
+    fonts: noFonts,
+    highlightedClubNumber: clubNumber,
+  })
+
+  assert.ok(!html.includes('card win'))
+  assert.ok(html.includes('Terminé'))
+})
+
+test('the club is recognised by its number, not by its name', () => {
+  const html = renderEncountersPoster({
+    encounters: [encounter()],
+    format: imageFormats['instagram-portrait'],
+    fonts: noFonts,
+    highlightedClubName: 'Mellinet TT',
+    highlightedClubNumber: '99999999',
+  })
+
+  assert.ok(!html.includes('card win'))
+  assert.ok(!html.includes('highlight"'))
+})
+
+test('the time is shown as announced, without any time zone shift', () => {
+  const html = render([encounter({ playedAt: '2026-01-11T14:30:00.000Z' })])
+
+  assert.ok(html.includes('dimanche 11 janvier · 14h30'))
+})
+
+test('a round hour is shown without minutes', () => {
+  const html = render([encounter({ playedAt: '2026-01-10T17:00:00.000Z' })])
+
+  assert.ok(html.includes('samedi 10 janvier · 17h'))
+})
+
+test('an unknown time is hidden rather than shown as midnight', () => {
+  const html = render([encounter({ playedAt: '2026-01-11T00:00:00.000Z' })])
+
+  assert.ok(html.includes('dimanche 11 janvier<'))
+  assert.ok(!html.includes('0h'))
 })

@@ -36,7 +36,9 @@ const synchronize = async (
   season = defaultSeason
 ) => {
   const fake = createFakeFfttClient(scenario)
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
   const summary = await synchronizer.synchronizeClub({
     clubNumber: mainClubNumber,
     season,
@@ -58,7 +60,9 @@ after(async () => {
 
 test('rejects a club number that is not numeric', async () => {
   const fake = createFakeFfttClient(buildScenario())
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
 
   await assert.rejects(
     () => synchronizer.synchronizeClub({ clubNumber: '44A123' }),
@@ -127,6 +131,23 @@ test('keeps the announced calendar day when converting FFTT dates', async () => 
       encounter.played_at.toISOString().slice(0, 10)
     ),
     ['2025-09-13', '2025-09-27', '2025-10-18']
+  )
+})
+
+test('fills in the start time of the level, as the FFTT only gives the day', async () => {
+  await synchronize()
+
+  const storedEncounters = await database
+    .select()
+    .from(encounters)
+    .orderBy(asc(encounters.championship_day_number))
+
+  // The scenario pool is a Départementale, played at 8:30.
+  assert.deepEqual(
+    storedEncounters.map((encounter) =>
+      encounter.played_at.toISOString().slice(11, 16)
+    ),
+    ['08:30', '08:30', '08:30']
   )
 })
 
@@ -333,7 +354,9 @@ test('fails when the FFTT application is not authorized', async () => {
     message: 'Application suspendue',
   }
   const fake = createFakeFfttClient(scenario)
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
 
   await assert.rejects(
     () =>
@@ -349,7 +372,9 @@ test('fails when the club is unknown to the FFTT', async () => {
   const scenario = buildScenario()
   scenario.clubs = []
   const fake = createFakeFfttClient(scenario)
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
 
   await assert.rejects(
     () => synchronizer.synchronizeClub({ clubNumber: mainClubNumber }),
@@ -456,7 +481,9 @@ test('keeps each season separate instead of overwriting the previous one', async
 
 test('rejects a malformed season label', async () => {
   const fake = createFakeFfttClient(buildScenario())
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
 
   await assert.rejects(
     () =>
@@ -747,7 +774,9 @@ test('puts the players back on their side when the result sheet is swapped', asy
 
   const lineup = await database.select().from(encounter_lineup)
   const storedTeams = await database.select().from(teams)
-  const mellinet = storedTeams.find((team) => team.normalizedName === 'mellinet tt 1')
+  const mellinet = storedTeams.find(
+    (team) => team.normalizedName === 'mellinet tt 1'
+  )
   const alice = lineup.find((member) => licenseOf(member.player_id) === 'L1')
   assert.equal(lineup.length, expectedLineup.length)
   assert.equal(alice?.team_id, mellinet?.id, 'Alice plays for the home team')
@@ -759,9 +788,10 @@ test('trusts the pool standings over the club numbers published on the encounter
   const expectedLineup = await database.select().from(encounter_lineup)
 
   const wrongClubs = buildScenario()
-  const encounter = wrongClubs.encountersByPool?.[
-    Object.keys(wrongClubs.encountersByPool ?? {})[0] ?? ''
-  ]?.[0]
+  const encounter =
+    wrongClubs.encountersByPool?.[
+      Object.keys(wrongClubs.encountersByPool ?? {})[0] ?? ''
+    ]?.[0]
   assert.ok(encounter !== undefined)
   // Once the results are entered, the FFTT may give both sides the same club.
   encounter.homeClubNumber = opponentClubNumber
@@ -773,10 +803,13 @@ test('trusts the pool standings over the club numbers published on the encounter
   const lineup = await database.select().from(encounter_lineup)
   const storedPlayers = await database.select().from(players)
   const storedTeams = await database.select().from(teams)
-  const mellinet = storedTeams.find((team) => team.normalizedName === 'mellinet tt 1')
+  const mellinet = storedTeams.find(
+    (team) => team.normalizedName === 'mellinet tt 1'
+  )
   const alice = lineup.find(
     (member) =>
-      storedPlayers.find((player) => player.id === member.player_id)?.ffttId === 'L1'
+      storedPlayers.find((player) => player.id === member.player_id)?.ffttId ===
+      'L1'
   )
 
   assert.equal(lineup.length, expectedLineup.length)
@@ -877,7 +910,9 @@ test('records the slot of every player on the result sheet', async () => {
 
 test('only the pools the club plays in have their ranking downloaded', async () => {
   const fake = createFakeFfttClient(buildScenario())
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
 
   await synchronizer.synchronizeClub({ clubNumber: mainClubNumber })
 
@@ -897,7 +932,9 @@ test('every pool is inspected when the teams do not name theirs', async () => {
   }
 
   const fake = createFakeFfttClient(scenario)
-  const synchronizer = createFfttSynchronizer(fake.client, database, () => { /* empty */ })
+  const synchronizer = createFfttSynchronizer(fake.client, database, () => {
+    /* empty */
+  })
   const summary = await synchronizer.synchronizeClub({
     clubNumber: mainClubNumber,
   })

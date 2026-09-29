@@ -6,8 +6,35 @@ test('the phase suffix is removed from the division name', () => {
   assert.deepEqual(parseDivisionLabel('Départementale 1 Phase 1'), {
     name: 'Départementale 1',
     level: 'Départementale',
+    echelon: 'departmental',
     phase: 1,
   })
+})
+
+test('the FFTT abbreviated labels are recognized', () => {
+  const cases: [string, string, string][] = [
+    ['L12 PH1 Reg. 1 Messieurs Poule 2', 'Régionale', 'regional'],
+    ['L12 PH1 REG. 3 MESSIEURS Poule 2', 'Régionale', 'regional'],
+    ['L12 PH1 PRENAT MESSIEURS Poule 1', 'Pré-Nationale', 'regional'],
+    ['D44 PR SENIORS MESSIEURS PH1 Poule 3', 'Pré-Régionale', 'departmental'],
+    ['D44 D1 SENIORS MESSIEURS PH1 Poule 2', 'Départementale', 'departmental'],
+  ]
+
+  for (const [label, level, echelon] of cases) {
+    const parsed = parseDivisionLabel(label)
+    assert.equal(parsed.level, level, label)
+    assert.equal(parsed.echelon, echelon, label)
+    assert.equal(parsed.phase, 1, label)
+  }
+})
+
+test('the organizer tells the echelon when the wording names no level', () => {
+  assert.deepEqual(parseDivisionLabel('D44 SENIORS MESSIEURS'), {
+    name: 'D44 SENIORS MESSIEURS',
+    level: 'Départementale',
+    echelon: 'departmental',
+  })
+  assert.equal(parseDivisionLabel('FED_Nationale 2').echelon, 'national')
 })
 
 test('the level is extracted whatever the accents and the casing', () => {

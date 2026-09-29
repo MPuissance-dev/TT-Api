@@ -90,6 +90,7 @@ export const upsertDivision = async (
       set: {
         name: values.name,
         level: values.level,
+        echelon: values.echelon,
         category: values.category,
       },
     })

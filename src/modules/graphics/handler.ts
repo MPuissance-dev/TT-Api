@@ -29,6 +29,7 @@ const buildPosterHtml = async (
     title: query.title,
     subtitle: query.subtitle,
     highlightedClubName: appServices.graphics.highlightedClubName,
+    highlightedClubNumber: appServices.followedClubNumber,
   })
 
   return { format, html }

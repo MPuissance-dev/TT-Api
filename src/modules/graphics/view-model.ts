@@ -13,6 +13,8 @@ export interface PosterPlayer {
 export interface PosterTeam {
   readonly name: string
   readonly clubName: string
+  /** FFTT club number, the only reliable way to recognise the club's teams. */
+  readonly clubNumber: string
   readonly lineup: PosterPlayer[]
 }
 
@@ -44,6 +46,7 @@ const toPosterTeam = (
 ): PosterTeam => ({
   name: team.name,
   clubName: team.club.name,
+  clubNumber: team.club.numero,
   lineup: lineup
     .filter((entry) => entry.team_id === team.id)
     .map((entry) => ({

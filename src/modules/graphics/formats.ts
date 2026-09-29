@@ -14,11 +14,17 @@ export interface ImageFormat {
   /** Multiplier applied to the base typography of the template. */
   readonly textScale: number
   /**
-   * Short formats cannot fit the lineups without clipping, so they drop them
-   * and tighten the spacing instead of shrinking the text below readability.
+   * How much each card shows. Rather than shrinking the text below
+   * readability, tighter layouts drop secondary lines and spacing:
+   * - `regular`: team name, club and lineup;
+   * - `compact`: team name and club, tighter spacing;
+   * - `dense`: team name only, so a full championship day (9 encounters)
+   *   fits on a single post.
    */
-  readonly compact: boolean
+  readonly density: PosterDensity
 }
+
+export type PosterDensity = 'regular' | 'compact' | 'dense'
 
 export type ImageFormatName =
   | 'instagram-square'
@@ -35,16 +41,16 @@ export const imageFormats: Record<ImageFormatName, ImageFormat> = {
     height: 1080,
     maxEncounters: 3,
     textScale: 1,
-    compact: false,
+    density: 'regular',
   },
   'instagram-portrait': {
     name: 'instagram-portrait',
     label: 'Instagram portrait (4:5)',
     width: 1080,
     height: 1350,
-    maxEncounters: 5,
+    maxEncounters: 9,
     textScale: 1,
-    compact: false,
+    density: 'dense',
   },
   'instagram-story': {
     name: 'instagram-story',
@@ -53,7 +59,7 @@ export const imageFormats: Record<ImageFormatName, ImageFormat> = {
     height: 1920,
     maxEncounters: 6,
     textScale: 1.1,
-    compact: false,
+    density: 'regular',
   },
   'facebook-square': {
     name: 'facebook-square',
@@ -62,7 +68,7 @@ export const imageFormats: Record<ImageFormatName, ImageFormat> = {
     height: 1200,
     maxEncounters: 3,
     textScale: 1.05,
-    compact: false,
+    density: 'regular',
   },
   'facebook-link': {
     name: 'facebook-link',
@@ -71,7 +77,7 @@ export const imageFormats: Record<ImageFormatName, ImageFormat> = {
     height: 630,
     maxEncounters: 2,
     textScale: 0.95,
-    compact: true,
+    density: 'compact',
   },
 }
 

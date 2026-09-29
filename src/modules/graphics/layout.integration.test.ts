@@ -22,6 +22,7 @@ const overflowingEncounter = (index: number): PosterEncounter => ({
   homeTeam: {
     name: `Association Sportive et Culturelle de Saint-Herblain ${String(index)}`,
     clubName: 'Association Sportive et Culturelle de Saint-Herblain',
+    clubNumber: '12440004',
     lineup: Array.from({ length: 8 }, (_, player) => ({
       fullName: `Jean-Baptiste de La Rochefoucauld ${String(player)}`,
       points: 1287,
@@ -30,6 +31,7 @@ const overflowingEncounter = (index: number): PosterEncounter => ({
   awayTeam: {
     name: `Union Sportive Municipale de Rezé ${String(index)}`,
     clubName: 'Union Sportive Municipale de Rezé',
+    clubNumber: '12440099',
     lineup: Array.from({ length: 8 }, (_, player) => ({
       fullName: `Marie-Charlotte Vandenbergh ${String(player)}`,
       points: 998,
@@ -69,6 +71,7 @@ test('no format overflows when filled to capacity with oversized data', async ()
         format,
         highlightedClubName:
           'Association Sportive et Culturelle de Saint-Herblain',
+        highlightedClubNumber: '12440004',
       })
 
       const context = await browser.newContext({

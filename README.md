@@ -209,7 +209,7 @@ Corps de requete (tous les champs sont optionnels) :
 | `FFTT_APPILICATION_CODE` | Code application fourni par la FFTT |
 | `FFTT_PWD` | Mot de passe de l'application FFTT |
 | `FFTT_SERIE` | Serie associee a l'application FFTT |
-| `FFTT_CLUB_NUMBER` | Numero du club suivi, utilise par defaut a la synchronisation |
+| `FFTT_CLUB_NUMBER` | Numero du club suivi (ex. `12440004`), utilise par defaut a la synchronisation et pour mettre en avant ses equipes et victoires sur les affiches |
 | `FFTT_MAX_CONCURRENT_REQUESTS` | Requetes FFTT simultanees au maximum (defaut 4) |
 | `FFTT_ATTEMPTS` | Nombre de tentatives par requete, la premiere comprise (defaut 5) |
 | `FFTT_MIN_REQUEST_INTERVAL_MS` | Delai minimum entre deux requetes FFTT (defaut 200) |
@@ -228,6 +228,24 @@ Une synchronisation n'est jamais un import : elle reconcilie l'existant.
 - les points des joueurs sont rafraichis a chaque passage ;
 - si la feuille de match est illisible ou absente, la rencontre est quand meme
   mise a jour et la composition deja enregistree est conservee.
+
+### Horaires des rencontres
+
+La FFTT ne publie que le **jour** d'une rencontre, jamais son heure. Pour le
+championnat senior, l'heure est deduite du niveau de la division
+(`src/modules/divisions/schedule.ts`) :
+
+| Niveau | Heure |
+| --- | --- |
+| Pre-Nationale | 17h00 |
+| Regionale | 14h30 |
+| Departementale | 8h30 |
+
+Une heure publiee par la FFTT n'est jamais ecrasee. Les autres niveaux et
+categories restent a minuit, ce qui signifie « heure inconnue » : l'affiche
+n'affiche alors que le jour. Les dates sont des heures locales de Paris stockees
+telles quelles (sans fuseau). Apres un changement de ces horaires, relancer la
+synchronisation met a jour les rencontres existantes.
 
 ### Robustesse et cout des appels
 
@@ -315,7 +333,7 @@ open 'http://localhost:3000/api/graphics/encounters-poster/preview?dayNumber=3&f
 | Nom | Dimensions | Rencontres affichees |
 | --- | --- | --- |
 | `instagram-square` | 1080x1080 | 3 |
-| `instagram-portrait` (defaut) | 1080x1350 | 5 |
+| `instagram-portrait` (defaut) | 1080x1350 | 9 (dense) |
 | `instagram-story` | 1080x1920 | 6 |
 | `facebook-square` | 1200x1200 | 3 |
 | `facebook-link` | 1200x630 | 2 (compact) |
@@ -334,6 +352,20 @@ Le format `facebook-link` est marque `compact` : 630 px de haut ne permettent pa
 d'afficher les compositions d'equipe sans rogner, elles sont donc omises et les
 marges resserrees plutot que de reduire le texte sous le seuil de lisibilite.
 
+Le format `instagram-portrait` est marque `dense` pour afficher une journee
+complete (9 rencontres) sur une seule publication : chaque carte ne garde que le
+nom des equipes, le score et l'en-tete division/date ; le club et les
+compositions sont omis.
+
+Le club suivi est reconnu par son numero FFTT (`FFTT_CLUB_NUMBER`, compare au
+numero du club de chaque equipe) et non par son nom. Ses equipes sont affichees
+en bleu et ses victoires sont mises en avant sur tous les formats : carte
+remplie de bleu, texte en blanc et statut `Victoire` au lieu de `Termine`.
+
+Les couleurs reprennent celles du club (noir, blanc et bleu RGB(70, 144, 180),
+soit `#4690B4`). Elles sont definies en variables CSS en tete de la feuille de
+style de `templates/encounters-poster.ts` (`--club-blue`, `--text`...). Les derbys entre deux equipes du club ne sont pas concernes.
+
 ### Polices
 
 Un serveur Linux n'a aucune des polices d'un Mac. Depose tes fichiers
@@ -345,7 +377,7 @@ est identique partout. Sans fichier, une pile systeme generique est utilisee.
 
 | Variable | Role |
 | --- | --- |
-| `GRAPHICS_CLUB_NAME` | Nom du club mis en avant sur les affiches |
+| `GRAPHICS_CLUB_NAME` | Nom du club affiche en pied d'affiche |
 | `GRAPHICS_CHROMIUM_NO_SANDBOX` | `true` pour ajouter `--no-sandbox`, souvent requis en conteneur |
 
 Chromium est lance une seule fois et partage par toutes les requetes, puis ferme

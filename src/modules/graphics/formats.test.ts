@@ -17,6 +17,13 @@ test('every format exposes coherent dimensions', () => {
   }
 })
 
+test('the instagram portrait post shows a full championship day', () => {
+  const format = imageFormats['instagram-portrait']
+
+  assert.equal(format.maxEncounters, 9)
+  assert.equal(format.density, 'dense')
+})
+
 test('an absent format falls back to the default one', () => {
   assert.equal(resolveImageFormat(undefined).name, defaultImageFormat)
 })

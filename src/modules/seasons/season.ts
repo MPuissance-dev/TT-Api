@@ -38,6 +38,6 @@ export const phaseFromDate = (
 export const phaseFromLabel = (
   label: string
 ): ChampionshipPhase | undefined => {
-  const match = label.match(/phase\s*([12])\b/i)
+  const match = label.match(/\bph(?:ase)?\s*([12])\b/i)
   return match === null ? undefined : (Number(match[1]) as ChampionshipPhase)
 }

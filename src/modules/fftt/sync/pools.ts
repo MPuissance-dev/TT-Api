@@ -1,4 +1,9 @@
 import { parseTeamLabel } from '../../teams/team.js'
+import {
+  divisionCategoryOf,
+  parseDivisionLabel,
+} from '../../divisions/division.js'
+import { defaultStartTimeOf } from '../../divisions/schedule.js'
 import { linkParameter } from '../client.js'
 import type { FfttPool, FfttTeamRanking } from '../models.js'
 import type { SynchronizationContext } from './context.js'
@@ -63,6 +68,10 @@ export const synchronizePool = async (
     divisionExternalId: input.division.externalId,
     poolExternalId,
     localPoolId,
+    defaultStartTime: defaultStartTimeOf(
+      parseDivisionLabel(input.division.label).level,
+      divisionCategoryOf(input.division.eventLabel, input.division.label)
+    ),
   })
 }
 
