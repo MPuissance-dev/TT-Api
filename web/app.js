@@ -208,7 +208,8 @@ const renderCalendar = async (params) => {
     (day) => `
       <section class="card">
         <h2 style="margin-top:0">Journée ${day.dayNumber}
-          <span class="muted"> · ${escape(formatWeekend(day.weekend))}</span></h2>
+          <span class="muted"> · ${escape(formatWeekend(day.weekend))}</span>
+          <a class="day-action" href="#/poster?${query({ ...context, dayNumber: day.dayNumber })}">Affiche</a></h2>
         ${renderEncounters(byDay.get(day.dayNumber) ?? [])}
       </section>`
   )
@@ -494,6 +495,150 @@ const renderPlayer = async (id, params) => {
     }`
 }
 
+/* Names match the formats served by the API, which owns their dimensions. */
+const posterFormats = [
+  ['instagram-portrait', 'Instagram portrait (4:5)'],
+  ['instagram-square', 'Instagram carré (1:1)'],
+  ['instagram-story', 'Instagram story (9:16)'],
+  ['facebook-square', 'Facebook carré (1:1)'],
+  ['facebook-link', 'Facebook lien (1.91:1)'],
+]
+
+const renderPoster = async (params) => {
+  const context = {
+    season: params.get('season') ?? currentSeason(),
+    phase: Number(params.get('phase') ?? currentPhase()),
+    category: params.get('category') ?? 'senior',
+    dayNumber: params.get('dayNumber') ?? undefined,
+  }
+  const options = {
+    format: params.get('format') ?? posterFormats[0][0],
+    title: params.get('title') || undefined,
+    subtitle: params.get('subtitle') || undefined,
+  }
+  const previewUrl = `/api/graphics/encounters-poster/preview?${query({
+    ...context,
+    ...options,
+  })}`
+
+  app.innerHTML = `
+    <a href="#/calendar?${query({
+      season: context.season,
+      phase: context.phase,
+      category: context.category,
+    })}" class="back">← Retour au calendrier</a>
+    <h1>Affiche${context.dayNumber ? ` · Journée ${escape(context.dayNumber)}` : ''}</h1>
+    <p class="muted">${escape(categoryLabels[context.category])} · Phase ${context.phase} · Saison ${escape(context.season)}</p>
+    <form class="poster-options card">
+      <label>Format
+        <select name="format">${posterFormats
+          .map(
+            ([name, label]) =>
+              `<option value="${name}" ${name === options.format ? 'selected' : ''}>${escape(label)}</option>`
+          )
+          .join('')}</select>
+      </label>
+      <label>Titre
+        <input type="text" name="title" maxlength="80" placeholder="Automatique" value="${escape(options.title)}" />
+      </label>
+      <label>Sous-titre
+        <input type="text" name="subtitle" maxlength="120" placeholder="Automatique" value="${escape(options.subtitle)}" />
+      </label>
+      <div class="poster-buttons">
+        <button type="submit">Mettre à jour</button>
+        <button type="button" data-download disabled>Télécharger le PNG</button>
+      </div>
+    </form>
+    <p class="error" data-poster-error hidden></p>
+    <div class="poster-frame"><iframe title="Aperçu de l'affiche" src="${escape(previewUrl)}"></iframe></div>`
+
+  const form = app.querySelector('form')
+  const frame = app.querySelector('.poster-frame')
+  const iframe = frame.querySelector('iframe')
+  const download = app.querySelector('[data-download]')
+  const errorBox = app.querySelector('[data-poster-error]')
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    location.hash = `#/poster?${query({
+      ...context,
+      ...Object.fromEntries(
+        [...new FormData(form)].filter(([, value]) => value !== '')
+      ),
+    })}`
+  })
+
+  /* The document is laid out at its real size, the frame only scales it down on screen. */
+  const size = () => {
+    const body = iframe.contentDocument?.body
+    return { width: body?.offsetWidth ?? 0, height: body?.offsetHeight ?? 0 }
+  }
+  const fit = () => {
+    const { width, height } = size()
+    if (width === 0) {
+      return
+    }
+    const scale = Math.min(
+      1,
+      frame.parentElement.clientWidth / width,
+      (window.innerHeight * 0.8) / height
+    )
+    iframe.style.width = `${width}px`
+    iframe.style.height = `${height}px`
+    iframe.style.transform = `scale(${scale})`
+    frame.style.width = `${width * scale}px`
+    frame.style.height = `${height * scale}px`
+  }
+
+  iframe.addEventListener('load', async () => {
+    const doc = iframe.contentDocument
+    if (
+      doc?.contentType !== 'text/html' ||
+      doc.querySelector('.poster') === null
+    ) {
+      errorBox.textContent = "L'affiche n'a pas pu être générée."
+      errorBox.hidden = false
+      return
+    }
+    await doc.fonts.ready
+    fit()
+    download.disabled = false
+  })
+  window.addEventListener('resize', fit)
+  window.addEventListener(
+    'hashchange',
+    () => window.removeEventListener('resize', fit),
+    {
+      once: true,
+    }
+  )
+
+  download.addEventListener('click', async () => {
+    download.disabled = true
+    errorBox.hidden = true
+    try {
+      const { domToPng } = await import('/vendor/modern-screenshot/index.mjs')
+      const { width, height } = size()
+      const dataUrl = await domToPng(iframe.contentDocument.body, {
+        width,
+        height,
+        scale: 1,
+        // The clone lands in a fresh document whose default body margin would shift the poster.
+        style: { margin: '0' },
+      })
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `affiche-${context.dayNumber ? `j${context.dayNumber}-` : ''}${options.format}.png`
+      link.click()
+    } catch (error) {
+      errorBox.textContent = `Export impossible : ${error.message}`
+      errorBox.hidden = false
+    } finally {
+      download.disabled = false
+    }
+  })
+}
+
 /* ---------- Router ---------- */
 
 const routes = [
@@ -502,6 +647,7 @@ const routes = [
   [/^\/encounter\/([^/]+)$/, ([, id], params) => renderEncounter(id, params)],
   [/^\/team\/([^/]+)$/, ([, id], params) => renderTeam(id, params)],
   [/^\/player\/([^/]+)$/, ([, id], params) => renderPlayer(id, params)],
+  [/^\/poster$/, (_, params) => renderPoster(params)],
 ]
 
 const route = async () => {

@@ -299,32 +299,30 @@ qu'un incident ne laisse jamais un match "joue" sans sa composition.
 ## Generation d'images
 
 Le module `src/modules/graphics/` transforme les rencontres en affiches prêtes a
-publier. Le rendu passe par Chromium (Playwright) : le template produit un
-document HTML autonome, le navigateur le capture a la taille exacte du format.
+publier. Le serveur produit seulement un document HTML autonome (CSS et polices
+inlines) ; c'est l'**interface web** qui l'affiche puis le convertit en PNG dans
+le navigateur, avec [modern-screenshot](https://github.com/qq15725/modern-screenshot).
+Le serveur n'a donc besoin d'aucun navigateur en production.
 
-```bash
-# A faire une fois apres l'installation des dependances
-npx playwright install chromium
-```
+Depuis le calendrier, le lien **Affiche** d'une journee ouvre la page
+`#/poster` : choix du format, titre et sous-titre optionnels, apercu a l'echelle
+et bouton **Telecharger le PNG**. L'image est capturee a la taille exacte du
+format, quelle que soit la reduction de l'apercu a l'ecran.
 
-### Endpoints
+La librairie est installee via npm et servie telle quelle sous
+`/vendor/modern-screenshot/`, sans etape de build.
+
+### Endpoint
 
 | Methode | Route | Reponse |
 | --- | --- | --- |
-| `POST` | `/api/graphics/encounters-poster` | `image/png` |
 | `GET` | `/api/graphics/encounters-poster/preview` | `text/html` |
 
-Les deux acceptent les memes parametres (`dayNumber`, `season`, `phase`,
-`format`, `title`, `subtitle`), le premier dans le corps JSON, le second en query
-string. La preview renvoie exactement le HTML qui sera capture : c'est la façon
-la plus rapide d'iterer sur le design dans un vrai navigateur.
+Parametres en query string : `dayNumber`, `season`, `phase`, `category`,
+`format`, `title`, `subtitle`. C'est aussi la façon la plus rapide d'iterer sur
+le design dans un vrai navigateur :
 
 ```bash
-curl -X POST http://localhost:3000/api/graphics/encounters-poster \
-  -H 'content-type: application/json' \
-  -d '{"dayNumber": 3, "format": "instagram-portrait"}' \
-  --output affiche.png
-
 open 'http://localhost:3000/api/graphics/encounters-poster/preview?dayNumber=3&format=instagram-story'
 ```
 
@@ -346,7 +344,8 @@ une seule ligne, donc une carte a toujours la meme hauteur quelles que soient le
 donnees. Le test `layout.integration.test.ts` remplit chaque format a sa capacite
 avec des noms de clubs volontairement demesures et verifie qu'aucun debordement
 n'est possible. Si tu changes la typographie ou les marges, ce test te dira
-immediatement quelles capacites reajuster.
+immediatement quelles capacites reajuster. Il s'appuie sur Playwright, qui n'est
+qu'une dependance de developpement (`npx playwright install chromium` une fois).
 
 Le format `facebook-link` est marque `compact` : 630 px de haut ne permettent pas
 d'afficher les compositions d'equipe sans rogner, elles sont donc omises et les
@@ -368,7 +367,7 @@ style de `templates/encounters-poster.ts` (`--club-blue`, `--text`...). Les derb
 
 ### Polices
 
-Un serveur Linux n'a aucune des polices d'un Mac. Depose tes fichiers
+Chaque navigateur a ses propres polices systeme. Depose tes fichiers
 `.woff2` dans `graphic/fonts/`, nommes `<Famille>-<graisse>.woff2` (par exemple
 `Barlow-700.woff2`) : ils sont inlines en base64 dans le document, donc le rendu
 est identique partout. Sans fichier, une pile systeme generique est utilisee.
@@ -378,10 +377,6 @@ est identique partout. Sans fichier, une pile systeme generique est utilisee.
 | Variable | Role |
 | --- | --- |
 | `GRAPHICS_CLUB_NAME` | Nom du club affiche en pied d'affiche |
-| `GRAPHICS_CHROMIUM_NO_SANDBOX` | `true` pour ajouter `--no-sandbox`, souvent requis en conteneur |
-
-Chromium est lance une seule fois et partage par toutes les requetes, puis ferme
-avec le serveur via le hook `onClose`.
 
 ## Tests
 

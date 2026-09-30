@@ -8,56 +8,32 @@ import type { components } from '../../types/api.js'
 export type EncountersPosterQuery =
   components['schemas']['EncountersPosterRequest']
 
-type PosterRequest = FastifyRequest<{ Body: EncountersPosterQuery }>
 type PreviewRequest = FastifyRequest<{ Querystring: EncountersPosterQuery }>
 
-const buildPosterHtml = async (
-  appServices: AppServices,
-  query: EncountersPosterQuery
-) => {
-  const format = resolveImageFormat(query.format)
-  const rows = await appServices.encounters.searchEncounters({
-    dayNumber: query.dayNumber,
-    season: query.season,
-    phase: query.phase,
-    category: query.category,
-  })
-
-  const html = renderEncountersPoster({
-    encounters: rows.map((row) => toPosterEncounter(row)),
-    format,
-    title: query.title,
-    subtitle: query.subtitle,
-    highlightedClubName: appServices.graphics.highlightedClubName,
-    highlightedClubNumber: appServices.followedClubNumber,
-  })
-
-  return { format, html }
-}
-
-export const createEncountersPosterHandler = (
-  appServices: AppServices = services
-) => {
-  return async (request: PosterRequest, reply: FastifyReply) => {
-    const { format, html } = await buildPosterHtml(appServices, request.body)
-    const png = await appServices.graphics.renderer.toPng(html, format)
-
-    return reply
-      .header('content-type', 'image/png')
-      .header('content-disposition', `inline; filename="${format.name}.png"`)
-      .send(png)
-  }
-}
-
 /**
- * Serves the very same document the renderer screenshots, so the layout can be
- * iterated on in a real browser without producing an image every time.
+ * Serves the standalone poster document. The web interface displays it and
+ * rasterises it to PNG in the browser, so the server never needs a browser.
  */
 export const createEncountersPosterPreviewHandler = (
   appServices: AppServices = services
 ) => {
   return async (request: PreviewRequest, reply: FastifyReply) => {
-    const { html } = await buildPosterHtml(appServices, request.query)
+    const format = resolveImageFormat(request.query.format)
+    const rows = await appServices.encounters.searchEncounters({
+      dayNumber: request.query.dayNumber,
+      season: request.query.season,
+      phase: request.query.phase,
+      category: request.query.category,
+    })
+
+    const html = renderEncountersPoster({
+      encounters: rows.map((row) => toPosterEncounter(row)),
+      format,
+      title: request.query.title,
+      subtitle: request.query.subtitle,
+      highlightedClubName: appServices.graphics.highlightedClubName,
+      highlightedClubNumber: appServices.followedClubNumber,
+    })
 
     return reply.header('content-type', 'text/html; charset=utf-8').send(html)
   }

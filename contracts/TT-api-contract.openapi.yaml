@@ -163,32 +163,11 @@ paths:
         '404':
           description: Joueur inconnu
 
-  /api/graphics/encounters-poster:
-    post:
-      tags:
-        - Graphics
-      summary: Génère une affiche des rencontres au format demandé
-      operationId: generateEncountersPoster
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/EncountersPosterRequest'
-      responses:
-        '200':
-          description: Image générée
-          content:
-            image/png:
-              schema:
-                type: string
-                format: binary
-
   /api/graphics/encounters-poster/preview:
     get:
       tags:
         - Graphics
-      summary: Renvoie le HTML exact qui sera transformé en image, pour itérer sur le design
+      summary: Renvoie le document HTML autonome de l'affiche, converti en PNG par l'interface web
       operationId: previewEncountersPoster
       parameters:
         - name: dayNumber
@@ -249,6 +228,7 @@ components:
         - facebook-link
 
     EncountersPosterRequest:
+      description: Paramètres de l'affiche, passés en query string
       type: object
       additionalProperties: false
       properties:

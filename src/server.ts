@@ -10,7 +10,6 @@ import { createFfttRouter } from './modules/fftt/router.js'
 import { createFfttClient } from './modules/fftt/client.js'
 import { createFfttSynchronizer } from './modules/fftt/index.js'
 import { createGraphicsRouter } from './modules/graphics/router.js'
-import { createPosterRenderer } from './modules/graphics/renderer.js'
 import { services as defaultServices, type AppServices } from './services.js'
 
 const schema = {
@@ -51,9 +50,6 @@ const schema = {
     GRAPHICS_CLUB_NAME: {
       type: 'string',
     },
-    GRAPHICS_CHROMIUM_NO_SANDBOX: {
-      type: 'string',
-    },
   },
 }
 
@@ -71,7 +67,6 @@ declare module 'fastify' {
       FFTT_MIN_REQUEST_INTERVAL_MS?: string
       FFTT_RATE_LIMIT_COOLDOWN_MS?: string
       GRAPHICS_CLUB_NAME?: string
-      GRAPHICS_CHROMIUM_NO_SANDBOX?: string
     }
   }
 }
@@ -152,16 +147,6 @@ export const createServer = async ({
     ),
     onRetry: (message, context) => fastify.log.warn(context, message),
   })
-  const posterRenderer = createPosterRenderer({
-    launchOptions:
-      fastify.config.GRAPHICS_CHROMIUM_NO_SANDBOX === 'true'
-        ? { args: ['--no-sandbox'] }
-        : undefined,
-  })
-  // Chromium outlives individual requests, so it must be torn down with Fastify.
-  fastify.addHook('onClose', async () => {
-    await posterRenderer.close()
-  })
 
   const configuredServices: AppServices = {
     ...appServices,
@@ -172,7 +157,6 @@ export const createServer = async ({
       (message, context) => fastify.log.info(context, message)
     ),
     graphics: {
-      renderer: posterRenderer,
       highlightedClubName: fastify.config.GRAPHICS_CLUB_NAME,
     },
     followedClubNumber: fastify.config.FFTT_CLUB_NUMBER,
@@ -188,8 +172,15 @@ export const createServer = async ({
     prefix: '/api/players',
   })
   // The web interface is a plain static page talking to the API above.
+  const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
   await fastify.register(fastifyStatic, {
-    root: join(dirname(fileURLToPath(import.meta.url)), '..', 'web'),
+    root: join(projectRoot, 'web'),
+  })
+  // Posters are rasterised in the browser, which needs this standalone ES module.
+  await fastify.register(fastifyStatic, {
+    root: join(projectRoot, 'node_modules', 'modern-screenshot', 'dist'),
+    prefix: '/vendor/modern-screenshot/',
+    decorateReply: false,
   })
   await fastify.register(createFfttRouter(configuredServices), {
     prefix: '/api/fftt',

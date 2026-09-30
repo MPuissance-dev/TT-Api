@@ -89,23 +89,6 @@ export interface paths {
     patch?: never
     trace?: never
   }
-  '/api/graphics/encounters-poster': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Génère une affiche des rencontres au format demandé */
-    post: operations['generateEncountersPoster']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
   '/api/graphics/encounters-poster/preview': {
     parameters: {
       query?: never
@@ -113,7 +96,7 @@ export interface paths {
       path?: never
       cookie?: never
     }
-    /** Renvoie le HTML exact qui sera transformé en image, pour itérer sur le design */
+    /** Renvoie le document HTML autonome de l'affiche, converti en PNG par l'interface web */
     get: operations['previewEncountersPoster']
     put?: never
     post?: never
@@ -142,6 +125,7 @@ export interface components {
       | 'instagram-story'
       | 'facebook-square'
       | 'facebook-link'
+    /** @description Paramètres de l'affiche, passés en query string */
     EncountersPosterRequest: {
       /** @description Journée de championnat */
       dayNumber?: number
@@ -570,30 +554,6 @@ export interface operations {
           [name: string]: unknown
         }
         content?: never
-      }
-    }
-  }
-  generateEncountersPoster: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['EncountersPosterRequest']
-      }
-    }
-    responses: {
-      /** @description Image générée */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'image/png': string
-        }
       }
     }
   }

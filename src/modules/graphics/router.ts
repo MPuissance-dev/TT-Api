@@ -1,8 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify'
-import {
-  createEncountersPosterHandler,
-  createEncountersPosterPreviewHandler,
-} from './handler.js'
+import { createEncountersPosterPreviewHandler } from './handler.js'
 import { imageFormatNames } from './formats.js'
 import { type AppServices, services } from '../../services.js'
 
@@ -20,20 +17,6 @@ export const createGraphicsRouter = (
   appServices: AppServices = services
 ): FastifyPluginAsync => {
   return async (fastify) => {
-    fastify.post(
-      '/encounters-poster',
-      {
-        schema: {
-          body: {
-            type: 'object',
-            additionalProperties: false,
-            properties: posterProperties,
-          },
-        },
-      },
-      createEncountersPosterHandler(appServices)
-    )
-
     fastify.get(
       '/encounters-poster/preview',
       {
