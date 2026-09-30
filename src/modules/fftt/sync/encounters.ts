@@ -1,7 +1,11 @@
 import { mapWithConcurrency } from '../../../shared/concurrency.js'
 import { normalizeName } from '../../../shared/text.js'
 import { linkParameter } from '../client.js'
-import { parseFfttDate } from '../mappers.js'
+import {
+  encounterExternalId,
+  getEncounterStatus,
+  parseFfttDate,
+} from '../mappers.js'
 import {
   withDefaultStartTime,
   type StartTime,
@@ -10,9 +14,11 @@ import type { FfttEncounter } from '../models.js'
 import type { SynchronizationContext } from './context.js'
 import { resolveEncounterSheet, type ResolvedSheet } from './sheet.js'
 import {
+  findEncounterStates,
   replaceEncounterLineup,
   replaceEncounterMatches,
   upsertEncounter,
+  type StoredEncounterState,
 } from './repository.js'
 
 export interface PoolLocation {
@@ -41,12 +47,22 @@ export const synchronizeEncounters = async (
     pool.poolExternalId
   )
 
+  const stored = context.force
+    ? new Map<string, StoredEncounterState>()
+    : await findEncounterStates(context.database, pool.localPoolId)
+
   // Everything that needs the FFTT is prepared first, several encounters at a
   // time; the writes then happen one by one so no two transactions compete.
   const prepared = await mapWithConcurrency(
     sourceEncounters,
     resultSheetConcurrency,
-    (encounter) => prepareEncounter(context, pool, encounter)
+    (encounter) =>
+      prepareEncounter(
+        context,
+        pool,
+        encounter,
+        stored.get(encounterExternalId(encounter, pool.poolExternalId))
+      )
   )
 
   for (const encounter of prepared) {
@@ -60,16 +76,35 @@ export const synchronizeEncounters = async (
 
 interface PreparedEncounter {
   source: FfttEncounter
-  home: EncounterSide & { teamId: string }
-  away: EncounterSide & { teamId: string }
+  home: EncounterSide
+  away: EncounterSide
   playedAt: Date
   sheet: ResolvedSheet
 }
 
+/** Left untouched when written: whatever is stored for the encounter is kept. */
+const keptSheet: ResolvedSheet = { lineup: undefined, games: undefined }
+
+/**
+ * A result sheet is final once published: an encounter already stored as
+ * played, with the same score and its games recorded, has nothing new to read.
+ */
+const isAlreadyComplete = (
+  stored: StoredEncounterState | undefined,
+  encounter: FfttEncounter
+): boolean =>
+  stored !== undefined &&
+  stored.status === 'played' &&
+  stored.matchCount > 0 &&
+  getEncounterStatus(encounter) === 'played' &&
+  stored.homeScore === (encounter.homeScore ?? null) &&
+  stored.awayScore === (encounter.awayScore ?? null)
+
 const prepareEncounter = async (
   context: SynchronizationContext,
   pool: PoolLocation,
-  encounter: FfttEncounter
+  encounter: FfttEncounter,
+  stored: StoredEncounterState | undefined
 ): Promise<PreparedEncounter | undefined> => {
   const sides = resolveSides(context, pool.localPoolId, encounter)
 
@@ -93,6 +128,24 @@ const prepareEncounter = async (
     return undefined
   }
 
+  return prepareEncounterOfSides(
+    context,
+    pool,
+    encounter,
+    { label: 'home', teamId: homeTeamId, clubNumber: sides.home.clubNumber },
+    { label: 'away', teamId: awayTeamId, clubNumber: sides.away.clubNumber },
+    stored
+  )
+}
+
+const prepareEncounterOfSides = async (
+  context: SynchronizationContext,
+  pool: PoolLocation,
+  encounter: FfttEncounter,
+  home: EncounterSide,
+  away: EncounterSide,
+  stored: StoredEncounterState | undefined
+): Promise<PreparedEncounter | undefined> => {
   const publishedAt = parseFfttDate(
     encounter.actualDate ?? encounter.plannedDate
   )
@@ -109,15 +162,9 @@ const prepareEncounter = async (
 
   const playedAt = withDefaultStartTime(publishedAt, pool.defaultStartTime)
 
-  const home = {
-    label: 'home' as const,
-    teamId: homeTeamId,
-    clubNumber: sides.home.clubNumber,
-  }
-  const away = {
-    label: 'away' as const,
-    teamId: awayTeamId,
-    clubNumber: sides.away.clubNumber,
+  if (!context.force && isAlreadyComplete(stored, encounter)) {
+    context.summary.skippedSheets += 1
+    return { source: encounter, home, away, playedAt, sheet: keptSheet }
   }
 
   return {
@@ -126,6 +173,30 @@ const prepareEncounter = async (
     away,
     playedAt,
     sheet: await resolveEncounterSheet(context, encounter, [home, away]),
+  }
+}
+
+/**
+ * Synchronizes one encounter already stored, whose teams are therefore known:
+ * neither the pool standings nor the other encounters are downloaded.
+ */
+export const synchronizeSingleEncounter = async (
+  context: SynchronizationContext,
+  pool: PoolLocation,
+  encounter: FfttEncounter,
+  home: EncounterSide,
+  away: EncounterSide
+): Promise<void> => {
+  const prepared = await prepareEncounterOfSides(
+    context,
+    pool,
+    encounter,
+    home,
+    away,
+    undefined
+  )
+  if (prepared !== undefined) {
+    await persistEncounter(context, pool, prepared)
   }
 }
 

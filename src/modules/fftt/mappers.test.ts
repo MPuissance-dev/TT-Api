@@ -83,6 +83,21 @@ test('splitGameLabel splits the two players of a double', () => {
   ])
 })
 
+test('splitGameLabel splits a double joined by "et", as the FFTT publishes it', () => {
+  assert.deepEqual(
+    splitGameLabel('JEGOU-HILLAIREAU Charlie et MAROLLEAU Olivier'),
+    ['JEGOU-HILLAIREAU Charlie', 'MAROLLEAU Olivier']
+  )
+  assert.deepEqual(splitGameLabel('FOCH Germain ET LE COZ Ronan'), [
+    'FOCH Germain',
+    'LE COZ Ronan',
+  ])
+})
+
+test('splitGameLabel does not split on "et" inside a name', () => {
+  assert.deepEqual(splitGameLabel('BETTANT Etienne'), ['BETTANT Etienne'])
+})
+
 test('splitGameLabel leaves a composed name alone', () => {
   assert.deepEqual(splitGameLabel('DUPONT Jean-Pierre'), ['DUPONT Jean-Pierre'])
 })

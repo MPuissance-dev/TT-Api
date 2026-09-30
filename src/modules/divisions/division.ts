@@ -111,3 +111,49 @@ export const parseDivisionLabel = (label: string): ParsedDivisionLabel => {
     ...(phase === undefined ? {} : { phase }),
   }
 }
+
+/**
+ * Levels from the highest to the lowest. Pré-Régionale is the top departmental
+ * division and Pré-Départementale the bottom one.
+ */
+export const levelHierarchy = [
+  'Nationale',
+  'Pré-Nationale',
+  'Régionale',
+  'Pré-Régionale',
+  'Départementale',
+  'Pré-Départementale',
+] as const
+
+const levelRankOf = (level: string): number => {
+  const rank = levelHierarchy.indexOf(level as (typeof levelHierarchy)[number])
+  return rank === -1 ? levelHierarchy.length : rank
+}
+
+/** Reads the `2` of `Régionale 2` or `R2`, ignoring organizer codes like D44. */
+export const divisionNumberOf = (name: string): number | undefined => {
+  const normalized = normalizeName(name)
+  const organizer = normalized.match(organizerPattern)?.[1]
+  const wording =
+    organizer === undefined ? normalized : normalized.slice(organizer.length)
+  const digits = wording.match(/\b[a-z]?(\d{1,2})\b/)?.[1]
+  return digits === undefined ? undefined : Number(digits)
+}
+
+export interface RankedDivision {
+  readonly level: string
+  readonly name: string
+}
+
+/**
+ * Orders divisions from the highest level down, then by division number so
+ * that a Régionale 1 comes before a Régionale 2. Unknown levels come last.
+ */
+export const compareDivisions = (
+  a: RankedDivision,
+  b: RankedDivision
+): number =>
+  levelRankOf(a.level) - levelRankOf(b.level) ||
+  (divisionNumberOf(a.name) ?? Number.MAX_SAFE_INTEGER) -
+    (divisionNumberOf(b.name) ?? Number.MAX_SAFE_INTEGER) ||
+  a.name.localeCompare(b.name, 'fr', { numeric: true })

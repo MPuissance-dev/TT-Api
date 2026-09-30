@@ -417,3 +417,51 @@ export const replaceTeamRankings = async (
       },
     })
 }
+
+export const findClubIdByNumber = async (
+  reader: DatabaseWriter,
+  clubNumber: string
+): Promise<string | undefined> => {
+  const [row] = await reader
+    .select({ id: clubs.id })
+    .from(clubs)
+    .where(eq(clubs.numero, clubNumber))
+    .limit(1)
+
+  return row?.id
+}
+
+export interface StoredEncounterState {
+  status: 'played' | 'scheduled' | 'reported'
+  homeScore: number | null
+  awayScore: number | null
+  matchCount: number
+}
+
+/** What is already stored for the encounters of a pool, keyed by FFTT identifier. */
+export const findEncounterStates = async (
+  reader: DatabaseWriter,
+  poolId: string
+): Promise<Map<string, StoredEncounterState>> => {
+  const rows = await reader
+    .select({
+      ffttId: encounters.ffttId,
+      status: encounters.status,
+      homeScore: encounters.home_score,
+      awayScore: encounters.away_score,
+      matchCount: sql<number>`count(${encounter_matches.id})::int`,
+    })
+    .from(encounters)
+    .leftJoin(
+      encounter_matches,
+      eq(encounter_matches.encounter_id, encounters.id)
+    )
+    .where(eq(encounters.pool_id, poolId))
+    .groupBy(encounters.id)
+
+  return new Map(
+    rows
+      .filter((row) => row.ffttId !== null)
+      .map(({ ffttId, ...state }) => [ffttId as string, state])
+  )
+}

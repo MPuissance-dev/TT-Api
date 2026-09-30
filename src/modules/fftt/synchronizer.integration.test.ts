@@ -31,20 +31,31 @@ const { database } = testDatabase
 
 const defaultSeason = '2025/2026'
 
-const synchronize = async (
-  scenario = buildScenario(),
-  season = defaultSeason
-) => {
+const synchronizerOf = (scenario = buildScenario()) => {
   const fake = createFakeFfttClient(scenario)
   const synchronizer = createFfttSynchronizer(fake.client, database, () => {
     /* empty */
   })
+  return { fake, synchronizer }
+}
+
+const synchronize = async (
+  scenario = buildScenario(),
+  season = defaultSeason,
+  force = false
+) => {
+  const { fake, synchronizer } = synchronizerOf(scenario)
   const summary = await synchronizer.synchronizeClub({
     clubNumber: mainClubNumber,
     season,
+    force,
   })
   return { summary, fake }
 }
+
+/** A correction of an already published result sheet is only read when forced. */
+const synchronizeForced = (scenario = buildScenario()) =>
+  synchronize(scenario, defaultSeason, true)
 
 before(async () => {
   await testDatabase.truncate()
@@ -534,7 +545,7 @@ test('replaces the lineup when the FFTT corrects the result sheet', async () => 
     { homePlayerLabel: 'BERNARD Chloé', awayPlayerLabel: 'DURAND Bob' },
   ]
 
-  await synchronize(corrected)
+  await synchronizeForced(corrected)
 
   const storedLineups = await database.select().from(encounter_lineup)
   assert.equal(
@@ -724,7 +735,7 @@ test('replaces the games when the FFTT corrects the result sheet', async () => {
   firstGame.homeScore = 1
   firstGame.awayScore = 3
 
-  await synchronize(corrected)
+  await synchronizeForced(corrected)
 
   const matches = await encounterMatchesOfFirstDay()
   assert.equal(matches.length, 2, 'the removed games must not linger')
@@ -945,4 +956,103 @@ test('every pool is inspected when the teams do not name theirs', async () => {
     'the ranking is the only way left to find the pools of the club'
   )
   assert.equal(summary.pools, 1, 'the foreign pool is still left out')
+})
+
+const firstDayEncounter = async () => {
+  const [first] = await database
+    .select()
+    .from(encounters)
+    .orderBy(asc(encounters.championship_day_number))
+  assert.ok(first !== undefined)
+  return first
+}
+
+test('does not download again the result sheet of a complete encounter', async () => {
+  const initial = await synchronize()
+  assert.equal(initial.fake.countCalls('getEncounterDetails'), 1)
+  assert.equal(initial.summary.skippedSheets, 0)
+
+  const { fake, summary } = await synchronize()
+
+  assert.equal(fake.countCalls('getEncounterDetails'), 0)
+  assert.equal(summary.skippedSheets, 1)
+  assert.equal(
+    (await encounterMatchesOfFirstDay()).length,
+    4,
+    'the stored games must be kept'
+  )
+  assert.equal(
+    (await database.select().from(encounter_lineup)).length > 0,
+    true
+  )
+})
+
+test('reuses the clubs already stored instead of searching them again', async () => {
+  const initial = await synchronize()
+  assert.ok(initial.fake.countCalls('searchClubs') > 1)
+
+  const { fake, summary } = await synchronize()
+
+  assert.equal(
+    fake.countCalls('searchClubs'),
+    1,
+    'only the synchronized club itself is refreshed'
+  )
+  assert.equal(summary.clubs, 1)
+})
+
+test('downloads again the result sheet when the final score changes', async () => {
+  await synchronize()
+
+  const corrected = buildScenario()
+  const published = corrected.encountersByPool?.[`6789:${poolId}`]?.[0]
+  assert.ok(published !== undefined)
+  published.homeScore = 13
+  published.awayScore = 7
+
+  const { fake, summary } = await synchronize(corrected)
+
+  assert.equal(fake.countCalls('getEncounterDetails'), 1)
+  assert.equal(summary.skippedSheets, 0)
+})
+
+test('downloads every result sheet and club again when forced', async () => {
+  await synchronize()
+
+  const { fake, summary } = await synchronizeForced()
+
+  assert.equal(fake.countCalls('getEncounterDetails'), 1)
+  assert.ok(fake.countCalls('searchClubs') > 1)
+  assert.equal(summary.skippedSheets, 0)
+})
+
+test('synchronizes a single encounter and applies the corrections of its sheet', async () => {
+  await synchronize()
+  const encounter = await firstDayEncounter()
+
+  const corrected = buildScenario()
+  const details = corrected.encounterDetails?.['987654']
+  assert.ok(details !== undefined)
+  details.games = details.games.slice(0, 2)
+  const { fake, synchronizer } = synchronizerOf(corrected)
+
+  const summary = await synchronizer.synchronizeEncounter(encounter.id)
+
+  assert.ok(summary !== undefined)
+  assert.equal(summary.encounters, 1)
+  assert.equal(fake.countCalls('getEncounterDetails'), 1)
+  assert.equal(fake.countCalls('listPools'), 0)
+  assert.equal(fake.countCalls('listTeams'), 0)
+  assert.equal((await encounterMatchesOfFirstDay()).length, 2)
+})
+
+test('returns nothing when synchronizing an unknown encounter', async () => {
+  await synchronize()
+  const { synchronizer } = synchronizerOf()
+
+  const summary = await synchronizer.synchronizeEncounter(
+    '00000000-0000-4000-8000-000000000000'
+  )
+
+  assert.equal(summary, undefined)
 })

@@ -193,12 +193,45 @@ curl -X POST http://localhost:3000/api/fftt/synchronization \
   -d '{"clubNumber": "44123456"}'
 ```
 
+Depuis l'interface web, le bouton **Synchroniser FFTT** de l'en-tete lance la
+meme requete avec les valeurs par defaut, affiche un loader pendant
+l'operation puis le resume, et recharge la page courante. La case **Tout
+re-telecharger** envoie `force: true`.
+
+Une seule rencontre peut aussi etre resynchronisee, par exemple quand sa feuille
+de match vient d'etre publiee ou corrigee (bouton **Resynchroniser cette
+rencontre** sur la page d'une rencontre) :
+
+```bash
+curl -X POST http://localhost:3000/api/fftt/encounters/<id>/synchronization
+```
+
+Seules la liste des rencontres de sa poule, sa feuille de match et les effectifs
+des deux clubs sont telecharges, en une seconde environ. Le classement de la
+poule n'est pas rafraichi : la prochaine synchronisation complete s'en charge.
+Une rencontre inconnue renvoie 404.
+
 Corps de requete (tous les champs sont optionnels) :
 
 - `clubNumber` : par defaut la valeur de `FFTT_CLUB_NUMBER`
 - `season` : par defaut la saison en cours, au format `2025/2026`
 - `phase` : par defaut la phase deduite du libelle de division, sinon de la date
 - `verifyAccess` : verifie l'autorisation de l'application aupres de la FFTT
+- `force` : re-telecharge aussi les feuilles de match deja completes et les
+  clubs deja connus (voir ci-dessous)
+
+Par defaut la synchronisation est incrementale :
+
+- la feuille d'une rencontre deja enregistree comme jouee, avec ses parties, et
+  dont le score publie n'a pas change n'est pas re-telechargee (compteur
+  `skippedSheets` du resume). Une rencontre forfait sans parties publiees est
+  toujours re-telechargee ;
+- un club adverse deja en base n'est pas re-cherche aupres de la FFTT (seul le
+  club synchronise est rafraichi) ;
+- consequence : les points des joueurs adverses ne sont rafraichis que lorsqu'une
+  de leurs feuilles est telechargee. `force: true` (ou une resynchronisation de
+  la rencontre) permet de prendre en compte une correction de feuille qui ne
+  change pas le score final.
 
 ### Variables d'environnement
 
@@ -225,7 +258,8 @@ Une synchronisation n'est jamais un import : elle reconcilie l'existant.
   retire de la feuille de match quitte la composition ;
 - les parties et le classement de la poule sont reconcilies de la meme maniere ;
 - une equipe qui quitte une poule est detachee de cette poule ;
-- les points des joueurs sont rafraichis a chaque passage ;
+- les points des joueurs du club sont rafraichis a chaque passage, ceux des
+  adversaires a chaque telechargement de leur effectif ;
 - si la feuille de match est illisible ou absente, la rencontre est quand meme
   mise a jour et la composition deja enregistree est conservee.
 

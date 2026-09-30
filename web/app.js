@@ -171,13 +171,10 @@ const renderCalendar = async (params) => {
     byDay.set(day, [...(byDay.get(day) ?? []), encounter])
   }
 
+  /* The API already orders encounters from the highest division down. */
   const renderEncounters = (list) => {
     const byDivision = new Map()
-    for (const encounter of list.sort(
-      (a, b) =>
-        `${a.division} ${a.pool}`.localeCompare(`${b.division} ${b.pool}`) ||
-        a.played_at.localeCompare(b.played_at)
-    )) {
+    for (const encounter of list) {
       const key = `${encounter.division} · ${encounter.pool}`
       byDivision.set(key, [...(byDivision.get(key) ?? []), encounter])
     }
@@ -256,7 +253,11 @@ const renderEncounter = async (id, params) => {
     <p class="muted">${escape(encounter.division)} · ${escape(encounter.pool)}
       ${encounter.championshipDayNumber ? ` · Journée ${encounter.championshipDayNumber}` : ''}
       · ${escape(formatDate(encounter.played_at))}
-      <span class="badge">${escape(statusLabels[encounter.status])}</span></p>
+      <span class="badge">${escape(statusLabels[encounter.status])}</span>
+      <button type="button" class="sync secondary" data-encounter-sync>
+        <span class="spinner" aria-hidden="true"></span>
+        <span data-label>Resynchroniser cette rencontre</span>
+      </button></p>
     <div class="card encounter">
       <h1>${teamLink(encounter.homeTeam, context)}</h1>
       <div class="score" style="font-size:1.6rem">${escape(
@@ -294,6 +295,18 @@ const renderEncounter = async (id, params) => {
               .join('')}</tbody>
           </table>`
     }`
+
+  const resync = app.querySelector('[data-encounter-sync]')
+  resync.addEventListener('click', () =>
+    runSynchronization({
+      button: resync,
+      url: `/api/fftt/encounters/${encodeURIComponent(id)}/synchronization`,
+      body: {},
+      pending: 'Resynchronisation de la rencontre en cours avec la FFTT…',
+      success: (summary) =>
+        `Rencontre resynchronisée : ${summary.matches} parties, ${summary.lineups} joueurs alignés.`,
+    })
+  )
 }
 
 const renderTeam = async (id, params) => {
@@ -674,3 +687,72 @@ const route = async () => {
 
 window.addEventListener('hashchange', route)
 route()
+
+/* ---------- FFTT synchronization ---------- */
+
+const syncButton = document.querySelector('[data-sync]')
+const syncForce = document.querySelector('[data-sync-force]')
+const syncStatus = document.querySelector('[data-sync-status]')
+
+const showSyncStatus = (html, kind) => {
+  syncStatus.className = `sync-status ${kind}`
+  syncStatus.innerHTML = `<span>${html}</span>
+    <button type="button" class="close" aria-label="Fermer">×</button>`
+  syncStatus.hidden = false
+  syncStatus.querySelector('.close').addEventListener('click', () => {
+    syncStatus.hidden = true
+  })
+}
+
+const runSynchronization = async ({ button, url, body, pending, success }) => {
+  const label = button.querySelector('[data-label]')
+  const idleLabel = label.textContent
+  button.disabled = true
+  button.classList.add('loading')
+  label.textContent = 'Synchronisation…'
+  showSyncStatus(pending, 'pending')
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const summary = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      throw new Error(summary.error ?? `L'API a répondu ${response.status}.`)
+    }
+
+    showSyncStatus(success(summary), 'success')
+    await route()
+  } catch (error) {
+    showSyncStatus(
+      `Échec de la synchronisation : ${escape(error.message)}`,
+      'failure'
+    )
+  } finally {
+    button.disabled = false
+    button.classList.remove('loading')
+    label.textContent = idleLabel
+  }
+}
+
+syncButton.addEventListener('click', () => {
+  const force = syncForce.checked
+  return runSynchronization({
+    button: syncButton,
+    url: '/api/fftt/synchronization',
+    body: force ? { force: true } : {},
+    pending: force
+      ? 'Synchronisation complète en cours avec la FFTT, cela peut prendre plusieurs minutes.'
+      : 'Synchronisation en cours avec la FFTT, cela peut prendre quelques minutes.',
+    success: (summary) =>
+      `Synchronisation terminée · saison ${escape(summary.season)} :
+        ${summary.encounters} rencontres, ${summary.matches} parties,
+        ${summary.teams} équipes, ${summary.players} joueurs${
+          summary.skippedSheets > 0
+            ? ` · ${summary.skippedSheets} feuilles déjà complètes non re-téléchargées`
+            : ''
+        }.`,
+  })
+})

@@ -3,7 +3,7 @@ import { nameKey } from '../../../shared/text.js'
 import type { ChampionshipPhase } from '../../seasons/season.js'
 import type { FfttClient } from '../client.js'
 import type { FfttLicense } from '../models.js'
-import { upsertClub, upsertPlayers } from './repository.js'
+import { findClubIdByNumber, upsertClub, upsertPlayers } from './repository.js'
 
 export type FfttSynchronizationLogger = (
   message: string,
@@ -25,6 +25,11 @@ export interface FfttSynchronizationSummary {
   /** Pool standings recorded. */
   rankings: number
   unmatchedPlayers: number
+  /**
+   * Result sheets not downloaded again, because the stored encounter is already
+   * played with the same score and its games recorded.
+   */
+  skippedSheets: number
   skippedEncounters: number
   skippedEncounterReasons: {
     missingTeams: number
@@ -49,6 +54,11 @@ export interface SynchronizationContext {
   readonly seasonName: string
   /** Overrides the phase deduced from the FFTT division labels. */
   readonly forcedPhase: ChampionshipPhase | undefined
+  /**
+   * Downloads every result sheet and refreshes every club again, instead of
+   * trusting what is already stored.
+   */
+  readonly force: boolean
   readonly summary: FfttSynchronizationSummary
   /** Local identifier of a team, keyed by `<club number>:<normalized label>`. */
   readonly teamIdsByClubAndLabel: Map<string, string>
@@ -58,7 +68,10 @@ export interface SynchronizationContext {
   readonly synchronizedTeamIds: Set<string>
   readonly synchronizedPlayerIds: Set<string>
   readonly synchronizedLineupKeys: Set<string>
-  /** Resolves a FFTT club number to its local identifier, fetching it once. */
+  /**
+   * Resolves a FFTT club number to its local identifier, fetching it at most
+   * once, and only when the club is not stored yet unless `force` is set.
+   */
   resolveClubId(clubNumber: string): Promise<string | undefined>
   /**
    * Loads and persists the roster of a club, at most once per synchronization
@@ -76,6 +89,7 @@ export interface SynchronizationContextInput {
   seasonId: string
   seasonName: string
   forcedPhase: ChampionshipPhase | undefined
+  force?: boolean | undefined
 }
 
 export const createSynchronizationContext = (
@@ -101,6 +115,7 @@ export const createSynchronizationContext = (
     matches: 0,
     rankings: 0,
     unmatchedPlayers: 0,
+    skippedSheets: 0,
     skippedEncounters: 0,
     skippedEncounterReasons: { missingTeams: 0, missingDate: 0 },
   }
@@ -108,6 +123,14 @@ export const createSynchronizationContext = (
   const fetchClubId = async (
     clubNumber: string
   ): Promise<string | undefined> => {
+    // A club rarely changes, so a known one costs no FFTT request.
+    if (input.force !== true) {
+      const known = await findClubIdByNumber(input.database, clubNumber)
+      if (known !== undefined) {
+        return known
+      }
+    }
+
     const [found] = await input.client.searchClubs({ number: clubNumber })
     if (found === undefined) {
       input.log('FFTT club not found, skipped', { clubNumber })
@@ -127,6 +150,7 @@ export const createSynchronizationContext = (
     seasonId: input.seasonId,
     seasonName: input.seasonName,
     forcedPhase: input.forcedPhase,
+    force: input.force === true,
     summary,
     teamIdsByClubAndLabel: new Map(),
     teamIdsByPoolAndLabel: new Map(),

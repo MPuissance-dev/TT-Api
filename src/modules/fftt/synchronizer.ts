@@ -1,4 +1,8 @@
+import { eq } from 'drizzle-orm'
 import { db, type Database } from '../../db/index.js'
+import { encounters } from '../../db/schemas/index.js'
+import { defaultStartTimeOf } from '../divisions/schedule.js'
+import { normalizeName } from '../../shared/text.js'
 import {
   seasonNameFromDate,
   type ChampionshipPhase,
@@ -10,6 +14,8 @@ import {
   type FfttSynchronizationSummary,
 } from './sync/context.js'
 import { collectDivisions, synchronizeDivision } from './sync/divisions.js'
+import { synchronizeSingleEncounter } from './sync/encounters.js'
+import { encounterExternalId } from './mappers.js'
 import { upsertClub, upsertSeason } from './sync/repository.js'
 
 export type {
@@ -24,6 +30,11 @@ export interface FfttSynchronizationOptions {
   season?: string
   /** Overrides the phase deduced from the FFTT division labels. */
   phase?: ChampionshipPhase
+  /**
+   * Downloads every result sheet and refreshes every club again. By default,
+   * an encounter already complete in the database keeps its stored sheet.
+   */
+  force?: boolean
 }
 
 const assertAuthorized = async (client: FfttClient) => {
@@ -86,6 +97,7 @@ export const createFfttSynchronizer = (
       seasonId,
       seasonName,
       forcedPhase: options.phase,
+      force: options.force,
     })
 
     await context.rosterOf(options.clubNumber)
@@ -111,6 +123,101 @@ export const createFfttSynchronizer = (
     summary.lineups = context.synchronizedLineupKeys.size
 
     logger('FFTT club synchronization completed', { ...summary })
+    return summary
+  },
+
+  /**
+   * Downloads the result sheet of a single stored encounter again, to pick up
+   * a correction without synchronizing the whole club. Resolves to `undefined`
+   * when the encounter is unknown.
+   */
+  async synchronizeEncounter(
+    encounterId: string
+  ): Promise<FfttSynchronizationSummary | undefined> {
+    const stored = await database.query.encounters.findFirst({
+      where: eq(encounters.id, encounterId),
+      with: {
+        pool: { with: { division: { with: { season: true } } } },
+        homeTeam: { with: { club: true } },
+        awayTeam: { with: { club: true } },
+      },
+    })
+    if (stored === undefined) {
+      return undefined
+    }
+
+    const { pool, homeTeam, awayTeam } = stored
+    const division = pool.division
+    if (pool.ffttId === null || division.ffttId === null) {
+      throw new Error('This encounter was not synchronized from the FFTT')
+    }
+
+    const sourceEncounters = await client.listPoolEncounters(
+      division.ffttId,
+      pool.ffttId
+    )
+    const sameTeam = (label: string, name: string) =>
+      normalizeName(label) === normalizeName(name)
+    const source =
+      sourceEncounters.find(
+        (encounter) =>
+          stored.ffttId !== null &&
+          encounterExternalId(encounter, pool.ffttId as string) ===
+            stored.ffttId
+      ) ??
+      sourceEncounters.find(
+        (encounter) =>
+          sameTeam(encounter.homeTeamLabel, homeTeam.name) &&
+          sameTeam(encounter.awayTeamLabel, awayTeam.name)
+      )
+    if (source === undefined) {
+      throw new Error(`FFTT encounter not found: ${encounterId}`)
+    }
+
+    const context = createSynchronizationContext({
+      client,
+      database,
+      log: logger,
+      clubNumber: homeTeam.club.numero,
+      clubId: homeTeam.clubId,
+      seasonId: division.seasonId,
+      seasonName: division.season.name,
+      forcedPhase: undefined,
+    })
+
+    logger('FFTT encounter synchronization started', {
+      encounterId,
+      encounter: source.label,
+    })
+
+    await synchronizeSingleEncounter(
+      context,
+      {
+        divisionExternalId: division.ffttId,
+        poolExternalId: pool.ffttId,
+        localPoolId: pool.id,
+        defaultStartTime: defaultStartTimeOf(division.level, division.category),
+      },
+      source,
+      {
+        label: 'home',
+        teamId: homeTeam.id,
+        clubNumber: homeTeam.club.numero,
+      },
+      {
+        label: 'away',
+        teamId: awayTeam.id,
+        clubNumber: awayTeam.club.numero,
+      }
+    )
+
+    const summary = context.summary
+    // The home club only seeds the context, it is not refreshed here.
+    summary.clubs -= 1
+    summary.players = context.synchronizedPlayerIds.size
+    summary.lineups = context.synchronizedLineupKeys.size
+
+    logger('FFTT encounter synchronization completed', { ...summary })
     return summary
   },
 })

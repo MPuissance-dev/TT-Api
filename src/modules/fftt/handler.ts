@@ -8,7 +8,12 @@ type SynchronizationRequest = FastifyRequest<{
     verifyAccess?: boolean
     season?: string
     phase?: ChampionshipPhase
+    force?: boolean
   }
+}>
+
+type EncounterSynchronizationRequest = FastifyRequest<{
+  Params: { encounterId: string }
 }>
 
 export const createSynchronizationHandler = (appServices: AppServices) => {
@@ -32,7 +37,36 @@ export const createSynchronizationHandler = (appServices: AppServices) => {
       ...(request.body.phase === undefined
         ? {}
         : { phase: request.body.phase }),
+      ...(request.body.force === undefined
+        ? {}
+        : { force: request.body.force }),
     })
+
+    return reply.send(summary)
+  }
+}
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export const createEncounterSynchronizationHandler = (
+  appServices: AppServices
+) => {
+  return async (
+    request: EncounterSynchronizationRequest,
+    reply: FastifyReply
+  ) => {
+    // Anything but a UUID names no encounter, and would make PostgreSQL fail.
+    if (!uuidPattern.test(request.params.encounterId)) {
+      return reply.status(404).send({ error: 'Encounter not found' })
+    }
+
+    const summary = await appServices.ffttSynchronization.synchronizeEncounter(
+      request.params.encounterId
+    )
+    if (summary === undefined) {
+      return reply.status(404).send({ error: 'Encounter not found' })
+    }
 
     return reply.send(summary)
   }

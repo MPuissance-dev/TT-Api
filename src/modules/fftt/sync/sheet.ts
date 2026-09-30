@@ -219,22 +219,36 @@ export const resolveEncounterSheet = async (
   const home = sides.find((side) => side.label === 'home')
   const away = sides.find((side) => side.label === 'away')
 
-  const games = details.games.map((game, index) => ({
-    number: index + 1,
-    source: game,
-    homePlayerIds:
-      home === undefined
-        ? []
-        : splitGameLabel(game.homePlayerLabel ?? '').map((label) =>
-            resolvePlayerId(label)
-          ),
-    awayPlayerIds:
-      away === undefined
-        ? []
-        : splitGameLabel(game.awayPlayerLabel ?? '').map((label) =>
-            resolvePlayerId(label)
-          ),
-  }))
+  const games = details.games.map((game, index) => {
+    const homeLabels =
+      home === undefined ? [] : splitGameLabel(game.homePlayerLabel ?? '')
+    const awayLabels =
+      away === undefined ? [] : splitGameLabel(game.awayPlayerLabel ?? '')
+    const homePlayerIds = homeLabels.map((label) => resolvePlayerId(label))
+    const awayPlayerIds = awayLabels.map((label) => resolvePlayerId(label))
+
+    // Game labels are loosely formatted free text: logging the raw game makes a
+    // label that cannot be split or matched easy to inspect.
+    const oddlySplit = [homeLabels, awayLabels].some(
+      (labels) => labels.length > 2
+    )
+    const hasUnmatchedPlayer = [...homePlayerIds, ...awayPlayerIds].includes(
+      undefined
+    )
+    if (oddlySplit || hasUnmatchedPlayer) {
+      context.log('FFTT game player could not be resolved', {
+        encounter: encounter.label,
+        number: index + 1,
+        rawGame: game,
+        homeLabels,
+        awayLabels,
+        homePlayerIds,
+        awayPlayerIds,
+      })
+    }
+
+    return { number: index + 1, source: game, homePlayerIds, awayPlayerIds }
+  })
 
   return { lineup, games }
 }

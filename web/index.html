@@ -9,7 +9,20 @@
   <body>
     <header>
       <a href="#/" class="brand">🏓 Championnat par équipes</a>
+      <div class="sync-controls">
+        <label
+          class="force"
+          title="Re-télécharge aussi les feuilles de match déjà complètes et les clubs connus"
+        >
+          <input type="checkbox" data-sync-force /> Tout re-télécharger
+        </label>
+        <button type="button" class="sync" data-sync>
+          <span class="spinner" aria-hidden="true"></span>
+          <span data-label>Synchroniser FFTT</span>
+        </button>
+      </div>
     </header>
+    <div class="sync-status" data-sync-status role="status" hidden></div>
     <main id="app" aria-live="polite"></main>
     <script type="module" src="/app.js"></script>
   </body>

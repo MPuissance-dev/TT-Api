@@ -297,12 +297,13 @@ export type EncounterMatchWinner =
 
 /**
  * A doubles game is published on the same list as the singles, with both names
- * in a single field. Only separators surrounded by spaces or a slash are used,
- * so a composed name such as `Jean-Pierre` is left alone.
+ * in a single field, usually joined by `et`. Only separators surrounded by
+ * spaces or a slash are used, so a composed name such as `Jean-Pierre` is left
+ * alone.
  */
 export const splitGameLabel = (label: string): string[] =>
   collapseWhitespace(label)
-    .split(/\s+-\s+|\s*\/\s*/)
+    .split(/\s+(?:-|et)\s+|\s*\/\s*/i)
     .map((part) => part.trim())
     .filter((part) => part.length > 0)
 

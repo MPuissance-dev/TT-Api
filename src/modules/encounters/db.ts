@@ -10,7 +10,11 @@ import {
   seasonNameFromDate,
   type ChampionshipPhase,
 } from '../seasons/season.js'
-import type { DivisionCategory } from '../divisions/division.js'
+import {
+  compareDivisions,
+  type DivisionCategory,
+  type RankedDivision,
+} from '../divisions/division.js'
 import type { ChampionshipDayDateCount } from './calendar.js'
 
 export interface EncounterSearchCriteria {
@@ -37,6 +41,22 @@ const encounterRelations = {
   },
 } as const
 
+interface SortableEncounter {
+  played_at: Date
+  pool: { name: string; division: RankedDivision }
+  homeTeam: { name: string }
+}
+
+/** Highest divisions first, then pool, date and home team so the order is stable. */
+const compareEncounterRows = (
+  a: SortableEncounter,
+  b: SortableEncounter
+): number =>
+  compareDivisions(a.pool.division, b.pool.division) ||
+  a.pool.name.localeCompare(b.pool.name, 'fr', { numeric: true }) ||
+  a.played_at.getTime() - b.played_at.getTime() ||
+  a.homeTeam.name.localeCompare(b.homeTeam.name, 'fr', { numeric: true })
+
 export const buildSearchEncounters =
   (database: Database) =>
   async (criteria: EncounterSearchCriteria = {}) => {
@@ -61,10 +81,12 @@ export const buildSearchEncounters =
       filters.push(eq(encounters.championship_day_number, criteria.dayNumber))
     }
 
-    return database.query.encounters.findMany({
+    const rows = await database.query.encounters.findMany({
       where: and(...filters),
       with: encounterRelations,
     })
+
+    return rows.sort(compareEncounterRows)
   }
 
 export type SearchEncounters = ReturnType<typeof buildSearchEncounters>

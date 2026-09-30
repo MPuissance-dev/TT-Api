@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { divisionCategoryOf, parseDivisionLabel } from './division.js'
+import {
+  compareDivisions,
+  divisionCategoryOf,
+  divisionNumberOf,
+  parseDivisionLabel,
+} from './division.js'
 
 test('the phase suffix is removed from the division name', () => {
   assert.deepEqual(parseDivisionLabel('Départementale 1 Phase 1'), {
@@ -75,4 +80,43 @@ test('the youth championships are recognized whatever their wording', () => {
 test('the veteran championships are recognized whatever their wording', () => {
   assert.equal(divisionCategoryOf('Championnat Vétérans'), 'veteran')
   assert.equal(divisionCategoryOf(undefined, 'Vétérans D1'), 'veteran')
+})
+
+test('divisions are ordered from the highest level down', () => {
+  const labels = [
+    'Départementale 2',
+    'Pré-Régionale',
+    'REGIONALE 2',
+    'D44 SENIORS MESSIEURS',
+    'Coupe Davidson',
+    'Pré-Nationale',
+    'R1',
+    'Départementale 1',
+    'Nationale 3',
+  ]
+
+  const ordered = labels
+    .map((label) => parseDivisionLabel(label))
+    .sort(compareDivisions)
+    .map((division) => division.name)
+
+  assert.deepEqual(ordered, [
+    'Nationale 3',
+    'Pré-Nationale',
+    'R1',
+    'REGIONALE 2',
+    'Pré-Régionale',
+    'Départementale 1',
+    'Départementale 2',
+    'D44 SENIORS MESSIEURS',
+    'Coupe Davidson',
+  ])
+})
+
+test('the division number ignores the organizer code', () => {
+  assert.equal(divisionNumberOf('Régionale 2'), 2)
+  assert.equal(divisionNumberOf('R3'), 3)
+  assert.equal(divisionNumberOf('D44 SENIORS MESSIEURS'), undefined)
+  assert.equal(divisionNumberOf('D44 Départementale 1'), 1)
+  assert.equal(divisionNumberOf('Pré-Nationale'), undefined)
 })
